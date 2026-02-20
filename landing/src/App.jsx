@@ -3,7 +3,8 @@ import Navbar from "./components/Navbar.jsx";
 import Hero from "./components/Hero.jsx";
 import Worlds from "./components/Worlds.jsx";
 import WorldScene from "./components/worlds/WorldScene.jsx";
-
+// at this point ye bas landing page and re route krra hai 
+// and as such humne kuch add nahi kia hai isme 
 function LandingPage() {
   return (
     <div className="min-h-screen w-full overflow-x-hidden">
