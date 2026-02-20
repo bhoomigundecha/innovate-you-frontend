@@ -1,4 +1,4 @@
-// Temporary stand-in avatar — a capsule mesh.
+// Temporary stand-in avatar 
 // Replace this component once GLB files are ready.
 export default function AvatarPlaceholder() {
   return (

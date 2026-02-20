@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+// this is the 3-card world carousel
+// also ismei hum sab world se related information lete hai and then wo world scene mei render hota hai
 const WORLDS = [
   {
     id: "court",
@@ -56,6 +57,17 @@ const WORLDS = [
     bg: "#F0F3FA",
     accentHex: "#8AAEE0",
     textAccent: "#628ECB",
+  },
+  {
+    id: "home",
+    worldId: "home",
+    label: "The Home",
+    tagline: "Where it all begins",
+    description:
+      "Return to a place of warmth and familiarity. Your AI companion is right here, ready to share a quiet moment with you.",
+    bg: "#EEE8F0",
+    accentHex: "#9B7FBD",
+    textAccent: "#6B4F8E",
   },
 ];
 

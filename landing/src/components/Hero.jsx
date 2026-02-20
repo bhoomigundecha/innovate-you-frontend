@@ -25,18 +25,18 @@ export default function Hero() {
         {/* Headline */}
         <h1
           className="
-          text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.12]
-          text-gray-900 mb-5
+          text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.12]
+          text-gray-900 mb-5 -mt-16
         "
         >
-          Your <span className="font-serif italic font-normal">Path</span> to{" "}
+          Your <span className="font-serif italic font-normal">Path</span> to 
           <span className="font-serif italic font-normal">Wellness</span>
           <br />
           Starts Here.
         </h1>
 
         {/* Subtext */}
-        <p className="text-base text-gray-500 leading-relaxed max-w-md mb-9">
+        <p className="text-base text-gray-500 leading-relaxed mb-9">
           Choose your escape world. People here are ready to listen, talk, and
           grow with you. No judgment. Just a conversation that actually feels
           real.
@@ -76,8 +76,14 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* ── Logo strip ── */}
       <div className="relative z-10 flex items-center justify-center gap-10 flex-wrap pt-14 pb-12 px-6">
+        <span className="text-xl font-bold italic uppercase tracking-wide text-black/20">
+          It's okay to not be okay. End the stigma. Talk it out.
+        </span> 
+      </div>
+
+      {/* ── Logo strip ── */}
+      {/* <div className="relative z-10 flex items-center justify-center gap-10 flex-wrap pt-14 pb-12 px-6">
         {[
           "MindfulAI",
           "GrowthHub",
@@ -93,7 +99,7 @@ export default function Hero() {
             {name}
           </span>
         ))}
-      </div>
+      </div> */}
     </section>
   );
 }

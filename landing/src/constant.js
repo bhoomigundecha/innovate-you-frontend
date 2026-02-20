@@ -1,10 +1,18 @@
 export const WORLDS_CONFIG = {
+  home: {
+    id: "home",
+    label: "The Home",
+    exr: "/assets/avatar_bg/home_2k.exr",
+    // No `ground` — this is an indoor scene; the floor is already in the panorama
+    cameraPosition: [0, 1.6, 0],
+    cameraFov: 75,
+  },
   city_walk: {
     id: "city_walk",
     label: "The City Walk",
     exr: "/assets/avatar_bg/city_walk.exr",
     ground: { height: 15, radius: 60, scale: 30 },
-    cameraPosition: [0, 1.7, 0],
+    cameraPosition: [0, 3, 0],
     cameraFov: 55,
   },
   football_court: {
@@ -12,7 +20,7 @@ export const WORLDS_CONFIG = {
     label: "The Football Court",
     exr: "/assets/avatar_bg/football_court.exr",
     ground: { height: 5, radius: 40, scale: 25 },
-    cameraPosition: [0, 1.7, 0],
+    cameraPosition: [0, 3, 0],
     cameraFov: 55,
   },
   nature_walk: {
@@ -20,7 +28,7 @@ export const WORLDS_CONFIG = {
     label: "The Nature Walk",
     exr: "/assets/avatar_bg/nature_walk.exr",
     ground: { height: 10, radius: 50, scale: 25 },
-    cameraPosition: [0, 1.7, 0],
+    cameraPosition: [0, 3, 0],
     cameraFov: 55,
   },
 };
