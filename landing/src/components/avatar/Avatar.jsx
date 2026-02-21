@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAvatar } from "../../hooks/useAvatar.js";
+import { useGLTF, useAnimations } from "@react-three/drei";
 
 /**
  * Avatar — renders a Ready Player Me avatar with emotion + talking + animation support.

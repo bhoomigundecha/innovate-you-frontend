@@ -2,6 +2,7 @@ import { useState, useEffect, Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
 import Avatar from "./avatar/Avatar.jsx";
+import { useGLTF } from "@react-three/drei";
 
 // ── Character data ──────────────────────────────────────────────────────────
 const CHARACTERS = [
@@ -13,6 +14,7 @@ const CHARACTERS = [
     glb: "/avatar2.glb",
     accent: "#7B9ECF",
     pill: "Therapist",
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
   {
     id: "parker",
@@ -22,6 +24,7 @@ const CHARACTERS = [
     glb: "/avatar4.glb",
     accent: "#6BA3E0",
     pill: "Friend",
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
   {
     id: "aris",
@@ -31,6 +34,7 @@ const CHARACTERS = [
     glb: "/avatar5.glb",
     accent: "#8AAEE0",
     pill: "Supporter",
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
   {
     id: "mark",
@@ -40,13 +44,15 @@ const CHARACTERS = [
     glb: "/avatar.glb",
     accent: "#4A86CC",
     pill: "Coach",
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
 ];
 
 const TOTAL = CHARACTERS.length;
 
 // ── Tiny 3-D avatar preview (used inside the centre card) ─────────────────
-function AvatarPreview({ glb }) {
+function AvatarPreview({ glb, animationGlb }) {
+  console.log("[AvatarPreview] glb:", glb, "animationGlb:", animationGlb);
   return (
     <Canvas
       camera={{ position: [0, 0.25, 1.4], fov: 38 }}
@@ -56,7 +62,15 @@ function AvatarPreview({ glb }) {
       <ambientLight intensity={1.2} />
       <directionalLight position={[2, 4, 3]} intensity={1.5} />
       <Suspense fallback={null}>
-        <Avatar url={glb} position={[0, -1.40, 0]} scale={1} />
+        <Avatar
+          url={glb}
+          animationUrls={animationGlb ? [animationGlb] : []}
+          position={[0, -1.4, 0]}
+          scale={1}
+          onReady={({ animationNames }) =>
+            console.log("[Avatar] Ready! Animations available:", animationNames)
+          }
+        />
       </Suspense>
       {/* Subtle environment for nice material shading */}
       <Suspense fallback={null}>
@@ -74,9 +88,16 @@ function AvatarPreview({ glb }) {
   );
 }
 
+useGLTF.preload("/avatar.glb");
+useGLTF.preload("/avatar2.glb");
+useGLTF.preload("/avatar4.glb");
+useGLTF.preload("/avatar5.glb");
+// Waving.fbx preloaded via useAvatar's FBXLoader
+
 // ── Main section ─────────────────────────────────────────────────────────────
 export default function Characters() {
   const [active, setActive] = useState(0);
+  // Preload all avatar GLBs and animation GLTFs so there's no pop-in on switch
 
   // Auto-advance every 3 s
   useEffect(() => {
@@ -195,7 +216,7 @@ export default function Characters() {
 
           {/* 3-D avatar — fills the bottom 2/3 of the card */}
           <div className="flex-1 relative z-10" style={{ minHeight: 0 }}>
-            <AvatarPreview key={cur.id} glb={cur.glb} />
+            <AvatarPreview glb={cur.glb} animationGlb={cur.animationGlb} />
           </div>
 
           {/* "Talk to" CTA row */}
