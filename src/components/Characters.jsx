@@ -5,9 +5,9 @@ import Avatar from "./avatar/Avatar.jsx";
 import { useGLTF } from "@react-three/drei";
 
 // ── Character data ──────────────────────────────────────────────────────────
-const CHARACTERS = [
+export const CHARACTERS = [
   {
-    id: "sienna",
+    id: "sienna", // female
     name: "Sienna",
     role: "Your personal therapist",
     tagline: "When you need an actual professional to talk to",
@@ -15,35 +15,39 @@ const CHARACTERS = [
     accent: "#7B9ECF",
     pill: "Therapist",
     animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
+    voice: "anushka",
   },
   {
     id: "parker",
-    name: "Parker",
+    name: "Parker", // aadmi
     role: "Your best buddy",
     tagline: "When you need advice like a friend",
     glb: "/avatar4.glb",
     accent: "#6BA3E0",
     pill: "Friend",
+    voice: "abhilash",
     animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
   {
     id: "aris",
-    name: "Aris",
+    name: "Aris", // aurat
     role: "Your biggest supporter",
     tagline: "When you need someone in your corner",
     glb: "/avatar5.glb",
     accent: "#8AAEE0",
     pill: "Supporter",
+    voice: "manisha",
     animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
   {
     id: "mark",
-    name: "Mark",
+    name: "Mark", // aadmi
     role: "Your coach",
     tagline: "When you need to level up",
     glb: "/avatar.glb",
     accent: "#4A86CC",
     pill: "Coach",
+    voice: "karun",
     animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
   },
 ];
