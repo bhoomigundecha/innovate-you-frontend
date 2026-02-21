@@ -263,7 +263,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
         return;
       }
       console.log("[useVoiceChat] ✅ Connected (id:", socket.id, ") — sending init");
-      socket.emit("init", { voice_id: String(voiceId), id: Number(id) });
+      socket.emit("init", { chat_id: String(id), voice_id: String(voiceId) });
     });
 
     socket.on("ready", () => {

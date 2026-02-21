@@ -17,6 +17,7 @@ import { WORLDS_CONFIG } from "../../constant.js";
 import { useVoiceChat } from "../../hooks/useVoiceChat.js";
 import FPSMovement from "./FPSMovement.jsx";
 import Avatar from "../avatar/Avatar.jsx";
+import { CHARACTERS } from "../Characters.jsx";
 
 /** Shows a centred loading spinner with progress % while assets load. */
 function Loader() {
@@ -119,9 +120,12 @@ export default function WorldScene() {
   const navigate = useNavigate();
   const config = WORLDS_CONFIG[id];
 
+  const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
+  const voiceIdForChat = character ? character.voice : "Anushka";
+
   // Voice chat — auto-starts mic + WS on mount
   const { status, isSpeaking, stop, start } = useVoiceChat({
-    voiceId: id,
+    voiceId: voiceIdForChat,
     id: 1,
     wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
   });
