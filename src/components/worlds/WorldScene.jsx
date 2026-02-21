@@ -2,7 +2,7 @@
 // Reads the :id from url via useParams()
 // Looks up WORLDS_CONFIG for that id
 // Renders the 3D scene using that config
-
+import uuid from "react-uuid";
 import { Suspense, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
@@ -127,7 +127,7 @@ export default function WorldScene() {
   // Voice chat — auto-starts mic + WS on mount
   const { status, isSpeaking, expression, stop, start } = useVoiceChat({
     voiceId: voiceIdForChat,
-    id: 1,
+    id: uuid(),
     wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
   });
 
