@@ -217,7 +217,7 @@ export default function WorldScene() {
             fontWeight: 500,
           }}
         >
-          {isSpeaking ? "🗣 Speaking" : `🎙 ${status}`}
+          {isSpeaking ? "🗣 Recording..." : `🎙 ${status === "streaming" ? "Hold Space to talk" : status}`}
         </span>
         <button
           onClick={status === "streaming" ? stop : start}
