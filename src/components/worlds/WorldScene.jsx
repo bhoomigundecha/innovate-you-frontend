@@ -2,8 +2,8 @@
 // Reads the :id from url via useParams()
 // Looks up WORLDS_CONFIG for that id
 // Renders the 3D scene using that config
-import uuid from "react-uuid";
-import { Suspense, useRef } from "react";
+import { v4 as uuid } from "uuid";
+import { Suspense, useRef, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
@@ -120,16 +120,36 @@ export default function WorldScene() {
   const { id } = useParams();
   const navigate = useNavigate();
   const config = WORLDS_CONFIG[id];
+  const [endingConversation, setEndingConversation] = useState(false);
 
   const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
   const voiceIdForChat = character ? character.voice : "Anushka";
 
   // Voice chat — auto-starts mic + WS on mount
-  const { status, isSpeaking, expression, stop, start } = useVoiceChat({
+  const { status, isSpeaking, expression, stop, start, requestReport, report } = useVoiceChat({
     voiceId: voiceIdForChat,
-    id: uuid(),
+    id: "session-1",
     wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
   });
+
+  // When the report arrives after ending, navigate to dashboard with the data
+  useEffect(() => {
+    if (!endingConversation) return;
+
+    if (report) {
+      stop();
+      navigate("/dashboard", { state: { report } });
+      return;
+    }
+
+    // Fallback: if no report arrives within 5s, navigate anyway
+    const timeout = setTimeout(() => {
+      stop();
+      navigate("/dashboard");
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [endingConversation, report, stop, navigate]);
 
   if (!config) {
     return (
@@ -201,8 +221,9 @@ export default function WorldScene() {
       {/* End Conversation button — top right */}
       <button
         onClick={() => {
-          if (status === "streaming") stop();
-          navigate("/dashboard");
+          // Request report from the existing WS, then navigate when it arrives
+          requestReport();
+          setEndingConversation(true);
         }}
         style={{
           position: "absolute",

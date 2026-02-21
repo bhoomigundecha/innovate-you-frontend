@@ -1,12 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useVoiceChat } from "../hooks/useVoiceChat";
 
 const getCurrentUser = () => {
   try {
     const stored = localStorage.getItem("innovateYou_user");
     if (stored) return JSON.parse(stored);
-  } catch (_) {}
+  } catch (_) { }
   return { name: "Friend" };
 };
 
@@ -36,23 +35,20 @@ const DEFAULT_REPORT = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(getCurrentUser);
   const [reportData, setReportData] = useState(DEFAULT_REPORT);
 
-  // Initialize voice chat and listen for end-of-session reports
-  const { report } = useVoiceChat({
-    voiceId: "alloy",
-    id: user?.id || 1,
-    onReport: (newReport) => {
-      // Merge socket report with default structure
-      if (newReport) {
-        setReportData((prev) => ({
-          ...prev,
-          ...newReport,
-        }));
-      }
-    },
-  });
+  // Read report passed from WorldScene via navigation state
+  useEffect(() => {
+    const report = location.state?.report;
+    if (report) {
+      setReportData((prev) => ({
+        ...prev,
+        ...report,
+      }));
+    }
+  }, [location.state]);
 
   useEffect(() => {
     setUser(getCurrentUser());

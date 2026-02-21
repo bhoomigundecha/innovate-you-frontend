@@ -311,6 +311,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
         } catch (err) {
           console.error("[useVoiceChat] Failed handling json payload:", err);
         }
+        console.log("[useVoiceChat] 📄 Report received:", payload.json);
         return;
       }
 
