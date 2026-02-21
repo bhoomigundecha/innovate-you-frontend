@@ -197,6 +197,31 @@ export default function WorldScene() {
         ← Back
       </button>
 
+      {/* End Conversation button — top right */}
+      <button
+        onClick={() => {
+          if (status === "streaming") stop();
+          navigate("/dashboard");
+        }}
+        style={{
+          position: "absolute",
+          top: 18,
+          right: 18,
+          zIndex: 10,
+          background: "rgba(239,68,68,0.6)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.25)",
+          borderRadius: 10,
+          color: "#fff",
+          padding: "7px 16px",
+          cursor: "pointer",
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        End Conversation
+      </button>
+
       {/* Voice status indicator */}
       <div
         style={{

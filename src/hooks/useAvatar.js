@@ -49,6 +49,13 @@ export function useAvatar({
 } = {}) {
     const gltf = useGLTF(url);
     const scene = useMemo(() => SkeletonUtils.clone(gltf.scene), [gltf.scene]);
+    const sceneBoneNames = useMemo(() => {
+        const names = new Set();
+        scene.traverse((node) => {
+            if (node.isBone && node.name) names.add(node.name);
+        });
+        return names;
+    }, [scene]);
 
     const morphMeshes = useMemo(() => {
         const meshes = [];
@@ -114,10 +121,88 @@ export function useAvatar({
                     const result = await new Promise((resolve, reject) =>
                         loader.load(animUrl, resolve, undefined, reject)
                     );
+
+                    // DEBUG: log bone names and track names to help diagnose mapping
+                    console.log("[DEBUG] Avatar bones:", Array.from(sceneBoneNames).slice(0, 10));
+                    console.log("[DEBUG] Animation track names:", result.animations?.[0]?.tracks.slice(0, 5).map(t => t.name));
+
                     const anims = result.animations;
-                    if (anims) clips.push(...anims);
+                    if (anims) {
+                        const sourceName = animUrl.split("/").pop() || "external";
+                        anims.forEach((clip, idx) => {
+                            const matchedTracks = [];
+
+                            clip.tracks.forEach((track) => {
+                                const dotIdx = track.name.lastIndexOf(".");
+                                if (dotIdx === -1) return;
+
+                                const rawNode = track.name.slice(0, dotIdx);
+                                const property = track.name.slice(dotIdx + 1);
+                                const pipeStripped = rawNode.replace(/^.*\|/, "");
+                                const colonStripped = pipeStripped.replace(/^.*:/, "");
+                                const numericStripped = colonStripped.replace(/^\d+/, "");
+                                const noMixamo = numericStripped.replace(/^mixamorig/, "");
+
+                                const candidates = [
+                                    rawNode,
+                                    pipeStripped,
+                                    colonStripped,
+                                    numericStripped,
+                                    noMixamo,
+                                    `mixamorig${noMixamo}`,
+                                ];
+
+                                let matchedBone = candidates.find((candidate) => sceneBoneNames.has(candidate));
+
+                                // Fallback: fuzzy match by normalizing names
+                                if (!matchedBone) {
+                                    const normalize = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                                    const trackNorms = candidates.map(c => normalize(c));
+                                    matchedBone = Array.from(sceneBoneNames).find((bone) => {
+                                        const bn = normalize(bone);
+                                        return trackNorms.some(tn => tn && (tn === bn || tn.endsWith(bn) || bn.endsWith(tn) || tn.indexOf(bn) !== -1 || bn.indexOf(tn) !== -1));
+                                    });
+                                }
+
+                                if (!matchedBone) return;
+
+                                track.name = `${matchedBone}.${property}`;
+                                matchedTracks.push(track);
+                            });
+
+                            if (matchedTracks.length === 0) {
+                                console.warn(`[useAvatar] No matching tracks found for clip "${clip.name}" from ${animUrl}`);
+                                return;
+                            }
+
+                            // Remove problematic tracks when retargeting Mixamo → RPM:
+                            // - scale (causes body morphing)
+                            // - root/hip position (root motion — sliding/stretching)
+                            // RPM Animation Library files are pre-retargeted and need less filtering
+                            clip.tracks = matchedTracks.filter((track) => {
+                                const dotIdx2 = track.name.lastIndexOf(".");
+                                const prop = dotIdx2 === -1 ? "" : track.name.slice(dotIdx2 + 1);
+                                const bone = dotIdx2 === -1 ? "" : track.name.slice(0, dotIdx2);
+                                const boneLower = (bone || "").toLowerCase();
+
+                                if (prop === "scale") return false;
+                                if (
+                                    prop === "position" &&
+                                    (boneLower.includes("hip") || boneLower.includes("hips") || boneLower.includes("root") || boneLower.includes("pelv") || boneLower.includes("pelvis"))
+                                ) {
+                                    return false;
+                                }
+                                return true;
+                            });
+
+                            console.log(`[useAvatar] loaded external clip "${clip.name}" from ${animUrl} — kept ${clip.tracks.length}/${matchedTracks.length} tracks`);
+
+                            clip.name = `external:${sourceName}:${clip.name || idx}`;
+                            clips.push(clip);
+                        });
+                    }
                 } catch (err) {
-                    console.warn(`[useAvatar] Could not load animation: ${animUrl}`);
+                    console.warn(`[useAvatar] Could not load animation: ${animUrl}`, err);
                 }
             }
             if (!cancelled) setExternalClips(clips);
@@ -125,7 +210,7 @@ export function useAvatar({
 
         loadAll();
         return () => { cancelled = true; };
-    }, [animationUrls]);
+    }, [animationUrls, sceneBoneNames]);
 
     const allClips = useMemo(() => {
         return [...(gltf.animations || []), ...externalClips];
@@ -162,16 +247,20 @@ export function useAvatar({
         [crossfadeDuration]
     );
 
-    const autoPlayed = useRef(false);
     useEffect(() => {
-        if (!autoPlayed.current && actions) {
-            const names = Object.keys(actions);
-            if (names.length > 0) {
-                playAnimation(names[0]);
-                autoPlayed.current = true;
-            }
+        if (!actions) return;
+        const externalNames = externalClips.map((c) => c.name);
+        if (externalNames.length > 0) {
+            // External animation loaded — play it
+            playAnimation(externalNames[0]);
+            return;
         }
-    }, [actions, playAnimation]);
+        // No external clips — fall back to first built-in GLTF clip if any
+        const names = Object.keys(actions);
+        if (names.length > 0) {
+            playAnimation(names[0]);
+        }
+    }, [actions, externalClips]);   // intentionally omitting playAnimation to avoid loop
 
     useFrame((_, delta) => {
         const emotionTargets = EMOTION_MORPH_MAP[emotionRef.current] || {};
