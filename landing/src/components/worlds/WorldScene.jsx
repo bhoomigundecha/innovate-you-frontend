@@ -14,6 +14,7 @@ import {
 } from "@react-three/drei";
 import { useParams, useNavigate } from "react-router-dom";
 import { WORLDS_CONFIG } from "../../constant.js";
+import { useVoiceChat } from "../../hooks/useVoiceChat.js";
 import FPSMovement from "./FPSMovement.jsx";
 import Avatar from "../avatar/Avatar.jsx";
 
@@ -118,6 +119,13 @@ export default function WorldScene() {
   const navigate = useNavigate();
   const config = WORLDS_CONFIG[id];
 
+  // Voice chat — auto-starts mic + WS on mount
+  const { status, isSpeaking, stop, start } = useVoiceChat({
+    voiceId: id,
+    id: 1,
+    wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
+  });
+
   if (!config) {
     return (
       <div
@@ -184,6 +192,52 @@ export default function WorldScene() {
       >
         ← Back
       </button>
+
+      {/* Voice status indicator */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 18,
+          right: 18,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <span
+          style={{
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 10,
+            color: "#fff",
+            padding: "6px 14px",
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          {isSpeaking ? "🗣 Speaking" : `🎙 ${status}`}
+        </span>
+        <button
+          onClick={status === "streaming" ? stop : start}
+          style={{
+            background: status === "streaming"
+              ? "rgba(239,68,68,0.7)"
+              : "rgba(34,197,94,0.7)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            borderRadius: 10,
+            color: "#fff",
+            padding: "7px 16px",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          {status === "streaming" ? "⏹ Stop" : "▶ Start"}
+        </button>
+      </div>
 
       <KeyboardControls map={KEY_MAP}>
         <Canvas camera={cameraConfig} style={{ background: "#0a0a0a" }}>
