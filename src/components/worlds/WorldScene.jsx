@@ -71,7 +71,7 @@ const AVATAR_Y = 0;
 const TARGET_Y = 1.0; // avatar's torso / center-of-body
 const CAM_Y = 1.0; // viewer eye height
 
-function Scene({ config }) {
+function Scene({ config, expression }) {
   const controlsRef = useRef();
 
   return (
@@ -91,6 +91,7 @@ function Scene({ config }) {
             url={config.avatarUrl}
             position={[0, AVATAR_Y, AVATAR_Z]}
             scale={1}
+            emotion={expression}
           />
         </Suspense>
       )}
@@ -124,7 +125,7 @@ export default function WorldScene() {
   const voiceIdForChat = character ? character.voice : "Anushka";
 
   // Voice chat — auto-starts mic + WS on mount
-  const { status, isSpeaking, stop, start } = useVoiceChat({
+  const { status, isSpeaking, expression, stop, start } = useVoiceChat({
     voiceId: voiceIdForChat,
     id: 1,
     wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
@@ -234,6 +235,24 @@ export default function WorldScene() {
           gap: 10,
         }}
       >
+        {/* Expression indicator */}
+        {expression && !isSpeaking && (
+          <span
+            style={{
+              background: "rgba(139, 92, 246, 0.6)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 10,
+              color: "#fff",
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              textTransform: "capitalize",
+            }}
+          >
+            🎭 {expression}
+          </span>
+        )}
         <span
           style={{
             background: "rgba(0,0,0,0.45)",
@@ -270,7 +289,7 @@ export default function WorldScene() {
 
       <KeyboardControls map={KEY_MAP}>
         <Canvas camera={cameraConfig} style={{ background: "#0a0a0a" }}>
-          <Scene config={config} />
+          <Scene config={config} expression={expression} />
         </Canvas>
       </KeyboardControls>
     </div>

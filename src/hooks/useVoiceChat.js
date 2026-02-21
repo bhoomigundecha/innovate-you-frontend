@@ -100,6 +100,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [expression, setExpression] = useState(null);
 
   // Stable refs
   const socketRef = useRef(null);
@@ -182,6 +183,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
 
     setStatus("idle");
     setIsSpeaking(false);
+    setExpression(null);
   }, [cleanupAudioInput, cleanupAudioOutput]);
 
   // ── Push-to-talk keyboard handlers ──────────
@@ -195,6 +197,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
       if (!isRecording()) {
         startRecording();
         setIsSpeaking(true);
+        setExpression(null); // Clear expression when user starts speaking
         console.log("[useVoiceChat] 🎙 Space held — recording");
       }
     };
@@ -284,6 +287,13 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
       console.log("[useVoiceChat] ✅ TTS complete");
     });
 
+    socket.on("expression", (data) => {
+      if (gen !== genRef.current) return;
+      const expr = typeof data === "string" ? data : data?.expression;
+      console.log("[useVoiceChat] 🎭 Expression received:", expr);
+      if (expr) setExpression(expr);
+    });
+
     socket.on("connect_error", (err) => {
       if (gen !== genRef.current) return;
       console.error("[useVoiceChat] ❌ Connection error:", err.message);
@@ -304,5 +314,5 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
     return cleanup;
   }, [start, cleanup]);
 
-  return { status, error, isSpeaking, start, stop: cleanup };
+  return { status, error, isSpeaking, expression, start, stop: cleanup };
 }
