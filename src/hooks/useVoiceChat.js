@@ -14,10 +14,11 @@ import { useAudioOutput } from "./useAudioOutput";
  * Push-to-talk: hold Space to record, release to send + flush.
  *
  * Usage:
- *   const { status, error, isSpeaking, start, stop } = useVoiceChat({
+ *   const { status, error, isSpeaking, start, stop, requestReport, report } = useVoiceChat({
  *     voiceId: "alloy",
  *     id: 42,
  *     wsUrl: "http://localhost:3000",
+ *     onReport: (report) => { ... } // optional
  *   });
  */
 
@@ -96,10 +97,11 @@ function float32ToWavBase64(samples, sampleRate) {
 // Hook
 // ──────────────────────────────────────────────
 
-export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
+export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [report, setReport] = useState(null);
 
   // Stable refs
   const socketRef = useRef(null);
@@ -161,6 +163,17 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
       }
     }, 200);
   }, [peekBufferedChunks, getBufferedChunks]);
+
+  // ── Request end-of-conversation report ──
+  const requestReport = useCallback(() => {
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit("end_conversation");
+      console.log("[useVoiceChat] 📣 end_conversation requested");
+    } else {
+      console.warn("[useVoiceChat] socket not connected - cannot request report");
+    }
+  }, []);
 
   // ── Cleanup ─────────────────────────────────
   const cleanup = useCallback(() => {
@@ -284,6 +297,37 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
       console.log("[useVoiceChat] ✅ TTS complete");
     });
 
+    socket.on("end_conversation_summary", (payload) => {
+      if (gen !== genRef.current || !payload) return;
+
+      // Prefer payload.json — fallback to payload.text
+      if (payload?.json) {
+        try {
+          setReport(payload.json);
+          if (typeof onReport === "function") onReport(payload.json);
+        } catch (err) {
+          console.error("[useVoiceChat] Failed handling json payload:", err);
+        }
+        return;
+      }
+
+      if (payload?.text) {
+        try {
+          const parsed = JSON.parse(payload.text);
+          setReport(parsed);
+          if (typeof onReport === "function") onReport(parsed);
+        } catch (err) {
+          console.warn("[useVoiceChat] Received non-JSON text summary, passing raw text");
+          const fallback = { raw: payload.text, metadata: { error: "raw_text" } };
+          setReport(fallback);
+          if (typeof onReport === "function") onReport(fallback);
+        }
+        return;
+      }
+
+      console.warn("[useVoiceChat] Unknown end_conversation_summary payload:", payload);
+    });
+
     socket.on("connect_error", (err) => {
       if (gen !== genRef.current) return;
       console.error("[useVoiceChat] ❌ Connection error:", err.message);
@@ -296,7 +340,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
       console.log("[useVoiceChat] 🔒 Disconnected:", reason);
       setStatus("idle");
     });
-  }, [voiceId, id, wsUrl, cleanup, initAudioInput, inputAudioCtxRef, playBase64Audio]);
+  }, [voiceId, id, wsUrl, cleanup, initAudioInput, inputAudioCtxRef, playBase64Audio, onReport]);
 
   // ── Auto-start on mount ─────────────────────
   useEffect(() => {
@@ -304,5 +348,5 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
     return cleanup;
   }, [start, cleanup]);
 
-  return { status, error, isSpeaking, start, stop: cleanup };
+  return { status, error, isSpeaking, start, stop: cleanup, requestReport, report };
 }
