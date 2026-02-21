@@ -4,6 +4,7 @@ import Hero from "./components/Hero.jsx";
 import Characters from "./components/Characters.jsx";
 import Worlds from "./components/Worlds.jsx";
 import WorldScene from "./components/worlds/WorldScene.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 // at this point ye bas landing page and re route krra hai
 // and as such humne kuch add nahi kia hai isme
 function LandingPage() {
@@ -26,6 +27,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/world/:id" element={<WorldScene />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>
   );
