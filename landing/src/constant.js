@@ -1,10 +1,10 @@
 // conatains the details of the world 
 
 // Avatar URLs per world type
-const AVATAR_HOME  = "https://models.readyplayer.me/699894f12de3dcd9837d5ebf.glb";
-const AVATAR_FOOTBALL = "https://models.readyplayer.me/699896002b9bcc76d5ea941c.glb";
-const AVATAR_NATURE= "https://models.readyplayer.me/699894784d98c7682174aa5a.glb";
-const AVATAR_DEFAULT = "https://models.readyplayer.me/699894f12de3dcd9837d5ebf.glb";
+const AVATAR_HOME  = "/avatar.glb";
+const AVATAR_FOOTBALL = "/avatar2.glb";
+const AVATAR_NATURE= "/avatar3.glb";
+const AVATAR_DEFAULT = "/avatar4.glb";
 
 export const WORLDS_CONFIG = {
   home: {
@@ -25,7 +25,7 @@ export const WORLDS_CONFIG = {
     ground: { height: 15, radius: 60, scale: 30 },
     cameraPosition: [0, 1.0, 0],
     cameraFov: 50,
-    avatarUrl: AVATAR_CITY,
+    avatarUrl: AVATAR_DEFAULT,
   },
   football_court: {
 
