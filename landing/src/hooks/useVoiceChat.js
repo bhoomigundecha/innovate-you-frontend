@@ -4,11 +4,17 @@ import { io } from "socket.io-client";
 /**
  * useVoiceChat – plug-and-play voice streaming over Socket.IO.
  *
+ * Push-to-talk: hold Space to record, release to send + flush.
+ *
+ * Audio is captured at 16 kHz via AudioContext, buffered while Space is held,
+ * then sent as ONE complete WAV (base64) on release — matching the backend's
+ * expected format (single audio_data + audio_flush).
+ *
  * Usage:
  *   const { status, error, isSpeaking, start, stop } = useVoiceChat({
  *     voiceId: "alloy",
  *     id: 42,
- *     wsUrl: "http://localhost:3000",   // optional, falls back to env
+ *     wsUrl: "http://localhost:3000",
  *   });
  */
 
@@ -16,21 +22,8 @@ const DEFAULT_URL =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_BACKEND_URL) ||
     "http://localhost:3000";
 
-// ──────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────
+const TARGET_SAMPLE_RATE = 16000;
 
-/** Convert a Blob to a base64 string (data-url prefix stripped). */
-function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
-
-/** Decode a base64 audio string and play it through an AudioContext. */
 async function playBase64Audio(audioCtx, base64) {
     const binaryStr = atob(base64);
     const bytes = new Uint8Array(binaryStr.length);
@@ -50,9 +43,21 @@ async function playBase64Audio(audioCtx, base64) {
     }
 }
 
-const SAMPLE_RATE = 16000;
+function mergeFloat32Arrays(chunks) {
+    let totalLength = 0;
+    for (const chunk of chunks) totalLength += chunk.length;
+    const result = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return result;
+}
 
-/** Encode a Float32Array of PCM samples into a base64 WAV string. */
+/**
+ * Convert a Float32Array of PCM samples into a base64-encoded WAV (16-bit, mono).
+ */
 function float32ToWavBase64(samples, sampleRate) {
     const numChannels = 1;
     const bitsPerSample = 16;
@@ -62,14 +67,13 @@ function float32ToWavBase64(samples, sampleRate) {
     const buffer = new ArrayBuffer(44 + dataSize);
     const view = new DataView(buffer);
 
-    // WAV header
     const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
     writeStr(0, "RIFF");
     view.setUint32(4, 36 + dataSize, true);
     writeStr(8, "WAVE");
     writeStr(12, "fmt ");
     view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true); // PCM
+    view.setUint16(20, 1, true);
     view.setUint16(22, numChannels, true);
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, byteRate, true);
@@ -78,7 +82,6 @@ function float32ToWavBase64(samples, sampleRate) {
     writeStr(36, "data");
     view.setUint32(40, dataSize, true);
 
-    // PCM data
     let offset = 44;
     for (let i = 0; i < samples.length; i++) {
         const s = Math.max(-1, Math.min(1, samples[i]));
@@ -86,10 +89,15 @@ function float32ToWavBase64(samples, sampleRate) {
         offset += 2;
     }
 
-    // To base64
     const bytes = new Uint8Array(buffer);
     let binary = "";
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const CHUNK = 8192;
+    for (let off = 0; off < bytes.length; off += CHUNK) {
+        const slice = bytes.subarray(off, Math.min(off + CHUNK, bytes.length));
+        for (let j = 0; j < slice.length; j++) {
+            binary += String.fromCharCode(slice[j]);
+        }
+    }
     return btoa(binary);
 }
 
@@ -108,22 +116,54 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
     const audioCtxRef = useRef(null);
     const processorRef = useRef(null);
     const micSourceRef = useRef(null);
-    const speakingRafRef = useRef(null);
     const activeSourceRef = useRef(null);
-    const wasSpeakingRef = useRef(false);
+    const gateOpenRef = useRef(false);       // spacebar controls this
+    const pcmChunksRef = useRef([]);          // buffered PCM chunks while recording
 
-    // Generation counter — prevents stale async callbacks from acting
+    // Generation counter
     const genRef = useRef(0);
+
+    // ── Send buffered audio as one complete WAV ──
+    const flushAudio = useCallback(() => {
+        const socket = socketRef.current;
+        const chunks = pcmChunksRef.current;
+
+        if (!socket?.connected || chunks.length === 0) {
+            pcmChunksRef.current = [];
+            return;
+        }
+
+        // Merge all buffered chunks into one complete Float32Array
+        const allSamples = mergeFloat32Arrays(chunks);
+        pcmChunksRef.current = [];
+
+        // Build one complete WAV — exactly like the working test sends a full .wav file
+        const base64 = float32ToWavBase64(allSamples, TARGET_SAMPLE_RATE);
+
+        console.log(
+            `[useVoiceChat] 📤 Sending complete WAV: ${allSamples.length} samples ` +
+            `(${(allSamples.length / TARGET_SAMPLE_RATE).toFixed(2)}s), ` +
+            `${base64.length} chars base64`
+        );
+
+        socket.emit("audio_data", {
+            audio: base64,
+            sample_rate: TARGET_SAMPLE_RATE,
+            encoding: "audio/wav",
+        });
+
+        // Flush after a short delay to match the working test pattern
+        setTimeout(() => {
+            if (socket.connected) {
+                socket.emit("audio_flush");
+                console.log("[useVoiceChat] � audio_flush sent");
+            }
+        }, 200);
+    }, []);
 
     // ── Cleanup ─────────────────────────────────
     const cleanup = useCallback(() => {
-        // Bump generation so any in-flight callbacks from old session become stale
         genRef.current += 1;
-
-        if (speakingRafRef.current) {
-            cancelAnimationFrame(speakingRafRef.current);
-            speakingRafRef.current = null;
-        }
 
         if (processorRef.current) {
             try { processorRef.current.disconnect(); } catch { /* */ }
@@ -155,46 +195,69 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
             activeSourceRef.current = null;
         }
 
+        pcmChunksRef.current = [];
+        gateOpenRef.current = false;
         setStatus("idle");
         setIsSpeaking(false);
     }, []);
 
-    // ── Speaking detection ──────────────────────
-    const startSpeakingDetection = useCallback((analyser, gen) => {
-        const buf = new Uint8Array(analyser.frequencyBinCount);
-        const THRESHOLD = 30;
+    // ── Push-to-talk keyboard handlers ──────────
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.code !== "Space" || e.repeat) return;
+            if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+            e.preventDefault();
 
-        const tick = () => {
-            if (gen !== genRef.current) return;
-            analyser.getByteFrequencyData(buf);
-            const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
-            const speaking = avg > THRESHOLD;
-            setIsSpeaking(speaking);
-
-            // Emit audio_flush when user stops speaking
-            if (wasSpeakingRef.current && !speaking && socketRef.current?.connected) {
-                console.log("[useVoiceChat] 🛑 Speech ended — flushing");
-                socketRef.current.emit("audio_flush");
+            if (!gateOpenRef.current) {
+                gateOpenRef.current = true;
+                pcmChunksRef.current = [];  // clear buffer for new recording
+                setIsSpeaking(true);
+                console.log("[useVoiceChat] 🎙 Space held — recording");
             }
-            wasSpeakingRef.current = speaking;
-
-            speakingRafRef.current = requestAnimationFrame(tick);
         };
-        tick();
-    }, []);
+
+        const onKeyUp = (e) => {
+            if (e.code !== "Space") return;
+            if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+            e.preventDefault();
+
+            if (gateOpenRef.current) {
+                gateOpenRef.current = false;
+                setIsSpeaking(false);
+                console.log("[useVoiceChat] 🛑 Space released — sending complete WAV + flush");
+
+                // Send all buffered audio as one complete WAV, then flush
+                flushAudio();
+            }
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+        window.addEventListener("keyup", onKeyUp);
+        return () => {
+            window.removeEventListener("keydown", onKeyDown);
+            window.removeEventListener("keyup", onKeyUp);
+        };
+    }, [flushAudio]);
 
     // ── Start ───────────────────────────────────
     const start = useCallback(async () => {
-        cleanup(); // kill any previous session
-        const gen = genRef.current; // capture current generation
+        cleanup();
+        const gen = genRef.current;
 
         setStatus("connecting");
         setError(null);
 
-        // 1. Mic
+        // 1. Mic — request mono with noise/echo cancellation
         let stream;
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
             if (gen !== genRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
             mediaStreamRef.current = stream;
             console.log("[useVoiceChat] 🎙 Mic granted");
@@ -206,9 +269,12 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
             return;
         }
 
-        // 2. AudioContext at 16 kHz for mic capture
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+        // 2. AudioContext at 16 kHz — the browser resamples from mic's native rate
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+            sampleRate: TARGET_SAMPLE_RATE,
+        });
         audioCtxRef.current = audioCtx;
+        console.log(`[useVoiceChat] 🔊 AudioContext sampleRate: ${audioCtx.sampleRate}`);
 
         // 3. Socket.IO
         const url = wsUrl || DEFAULT_URL;
@@ -229,37 +295,30 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
 
         socket.on("ready", () => {
             if (gen !== genRef.current) return;
-            console.log("[useVoiceChat] 🟢 Backend ready — starting audio stream");
+            console.log("[useVoiceChat] 🟢 Backend ready — hold Space to talk");
             setStatus("streaming");
 
-            // Mic → ScriptProcessor → PCM WAV base64 → socket
+            // Mic → ScriptProcessor → buffer PCM chunks (sent on Space release)
             const micSource = audioCtx.createMediaStreamSource(stream);
             micSourceRef.current = micSource;
 
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 512;
-
-            // 4096 samples per buffer at 16 kHz ≈ 256ms chunks
             const processor = audioCtx.createScriptProcessor(4096, 1, 1);
             processorRef.current = processor;
 
             processor.onaudioprocess = (e) => {
-                if (gen !== genRef.current || !socket.connected) return;
+                if (gen !== genRef.current) return;
+                // Only buffer while Space is held
+                if (!gateOpenRef.current) return;
+
+                // Copy the PCM data (getChannelData returns a live view, must copy)
                 const pcm = e.inputBuffer.getChannelData(0);
-                const base64 = float32ToWavBase64(pcm, SAMPLE_RATE);
-                socket.emit("audio_data", {
-                    audio: base64,
-                    sample_rate: SAMPLE_RATE,
-                    encoding: "audio/wav",
-                });
+                pcmChunksRef.current.push(new Float32Array(pcm));
             };
 
-            micSource.connect(analyser);
-            analyser.connect(processor);
+            micSource.connect(processor);
             processor.connect(audioCtx.destination);
 
-            console.log("[useVoiceChat] 🎤 PCM capture started (16 kHz, WAV)");
-            startSpeakingDetection(analyser, gen);
+            console.log(`[useVoiceChat] 🎤 PCM capture ready (${audioCtx.sampleRate} Hz, buffered WAV, push-to-talk)`);
         });
 
         socket.on("tts_audio", (data) => {
@@ -286,7 +345,7 @@ export function useVoiceChat({ voiceId, id, wsUrl } = {}) {
             console.log("[useVoiceChat] 🔒 Disconnected:", reason);
             setStatus("idle");
         });
-    }, [voiceId, id, wsUrl, cleanup, startSpeakingDetection]);
+    }, [voiceId, id, wsUrl, cleanup]);
 
     // ── Auto-start on mount ─────────────────────
     useEffect(() => {
