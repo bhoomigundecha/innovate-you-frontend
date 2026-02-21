@@ -15,8 +15,9 @@ import {
 import { useParams, useNavigate } from "react-router-dom";
 import { WORLDS_CONFIG } from "../../constant.js";
 import FPSMovement from "./FPSMovement.jsx";
+import Avatar from "../avatar/Avatar.jsx";
 
-/** Shows a centred loading spinner with progress % while EXR loads. */
+/** Shows a centred loading spinner with progress % while assets load. */
 function Loader() {
   const { progress } = useProgress();
   return (
@@ -31,7 +32,6 @@ function Loader() {
           fontFamily: "Inter, sans-serif",
         }}
       >
-        {/* Spinner ring */}
         <div
           style={{
             width: 52,
@@ -58,24 +58,56 @@ const KEY_MAP = [
   { name: "right", keys: ["ArrowRight", "KeyD"] },
 ];
 
+/**
+ * AVATAR_Z   — how far in front the avatar stands (negative = in front of camera).
+ * AVATAR_Y   — feet y-position (0 = ground level).
+ * TARGET_Y   — where OrbitControls looks (avatar mid-body, ~1 m up).
+ * CAM_Y      — camera height (roughly viewer eye level).
+ */
+const AVATAR_Z = -2.5;
+const AVATAR_Y = 0;
+const TARGET_Y = 1.0; // avatar's torso / center-of-body
+const CAM_Y = 1.0; // viewer eye height
+
 function Scene({ config }) {
   const controlsRef = useRef();
+
   return (
     <>
+      {/* Environment / skybox — wrapped in its own Suspense with loading UI */}
       <Suspense fallback={<Loader />}>
         <Environment
           files={config.exr}
           {...(config.ground ? { ground: config.ground } : {})}
         />
       </Suspense>
+
+      {/* Ready Player Me avatar — stands 2.5 m in front, feet on ground */}
+      {config.avatarUrl && (
+        <Suspense fallback={null}>
+          <Avatar
+            url={config.avatarUrl}
+            position={[0, AVATAR_Y, AVATAR_Z]}
+            scale={1}
+          />
+        </Suspense>
+      )}
+
       <FPSMovement controlsRef={controlsRef} />
+
+      {/*
+        OrbitControls:
+          - target = avatar's mid-body so the camera orbits around the avatar
+          - minPolarAngle / maxPolarAngle keep the view roughly horizontal
+      */}
       <OrbitControls
         ref={controlsRef}
+        target={[0, TARGET_Y, AVATAR_Z]}
         enableZoom={true}
-        minDistance={0.5}
-        maxDistance={30}
-        minPolarAngle={Math.PI / 4}
-        maxPolarAngle={Math.PI / 2.1}
+        minDistance={1.2}
+        maxDistance={6}
+        minPolarAngle={Math.PI * 0.25}
+        maxPolarAngle={Math.PI * 0.65}
       />
     </>
   );
@@ -117,6 +149,18 @@ export default function WorldScene() {
     );
   }
 
+  /*
+    Camera setup for the "full-body video call" feel:
+      position  — viewer stands at eye height (CAM_Y), same Z as camera origin
+      fov       — 50° gives a tighter frame that fills the avatar nicely
+      The camera looks toward [0, TARGET_Y, AVATAR_Z] (avatar torso) by default
+      because that's what OrbitControls targets on mount.
+  */
+  const cameraConfig = {
+    position: [0, CAM_Y, 0],
+    fov: config.cameraFov ?? 50,
+  };
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       {/* Back button */}
@@ -142,10 +186,7 @@ export default function WorldScene() {
       </button>
 
       <KeyboardControls map={KEY_MAP}>
-        <Canvas
-          camera={{ position: config.cameraPosition, fov: config.cameraFov }}
-          style={{ background: "#111" }}
-        >
+        <Canvas camera={cameraConfig} style={{ background: "#0a0a0a" }}>
           <Scene config={config} />
         </Canvas>
       </KeyboardControls>

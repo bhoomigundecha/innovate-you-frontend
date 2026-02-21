@@ -1,5 +1,7 @@
 // Temporary stand-in avatar 
 // Replace this component once GLB files are ready.
+
+// gonna add later 
 export default function AvatarPlaceholder() {
   return (
     <group position={[0, -0.5, 0]}>
