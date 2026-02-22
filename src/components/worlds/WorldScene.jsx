@@ -3,7 +3,7 @@
 // Looks up WORLDS_CONFIG for that id
 // Renders the 3D scene using that config
 import { v4 as uuid } from "uuid";
-import { Suspense, useRef, useState, useEffect, useMemo } from "react";
+import { Suspense, useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
@@ -72,7 +72,7 @@ const AVATAR_Y = 0;
 const TARGET_Y = 1.0; // avatar's torso / center-of-body
 const CAM_Y = 1.0; // viewer eye height
 
-function Scene({ config, expression }) {
+function Scene({ config, expression, isAvatarTalking }) {
   const controlsRef = useRef();
 
   return (
@@ -93,6 +93,7 @@ function Scene({ config, expression }) {
             position={[0, AVATAR_Y, AVATAR_Z]}
             scale={1}
             emotion={expression}
+            talking={isAvatarTalking}
           />
         </Suspense>
       )}
@@ -123,6 +124,7 @@ export default function WorldScene() {
   const config = WORLDS_CONFIG[id];
   const [endingConversation, setEndingConversation] = useState(false);
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
+  const [isAvatarTalking, setIsAvatarTalking] = useState(false);
 
   const { voiceIdForChat, chatSessionId } = useMemo(() => {
     const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
@@ -134,11 +136,21 @@ export default function WorldScene() {
 
   const wsUrl = import.meta.env.VITE_WS_BACKEND_URL;
 
+  const onStartTalking = useCallback(() => {
+    setIsAvatarTalking(true);
+  }, []);
+
+  const onStopTalking = useCallback(() => {
+    setIsAvatarTalking(false);
+  }, []);
+
   // Voice chat — auto-starts mic + WS on mount
   const { status, isSpeaking, expression, stop, start, requestReport, report } = useVoiceChat({
     voiceId: voiceIdForChat,
     id: chatSessionId,
     wsUrl,
+    onStartTalking,
+    onStopTalking,
   });
 
   // Keep a ref to stop so the useEffect doesn't re-run when stop changes
@@ -369,7 +381,11 @@ export default function WorldScene() {
 
       <KeyboardControls map={KEY_MAP}>
         <Canvas camera={cameraConfig} style={{ background: "#0a0a0a" }}>
-          <Scene config={config} expression={expression} />
+          <Scene
+            config={config}
+            expression={expression}
+            isAvatarTalking={isAvatarTalking}
+          />
         </Canvas>
       </KeyboardControls>
       <SafetyModal isOpen={isSafetyModalOpen} onClose={() => setIsSafetyModalOpen(false)} />

@@ -323,7 +323,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport, onStartTalking, onS
         if (typeof onStartTalking === "function") {
           onStartTalking();
         }
-        
+
         // Play audio and setup stop callback
         playBase64Audio(audioCtxRef.current, data.audio, () => {
           // Audio finished playing - stop avatar talking
@@ -372,7 +372,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport, onStartTalking, onS
       console.log("[useVoiceChat] 🔒 Disconnected (gen:", gen, "):", reason);
       setStatus("idle");
     });
-  }, [voiceId, id, wsUrl, cleanup, initAudioInput, inputAudioCtxRef, playBase64Audio, onReport]);
+  }, [voiceId, id, wsUrl, cleanup, initAudioInput, inputAudioCtxRef, playBase64Audio, onReport, onStartTalking, onStopTalking]);
 
   // ── Auto-start on mount / Param Change ──────
   // Effect 1: Start/Reconnect on parameter change
