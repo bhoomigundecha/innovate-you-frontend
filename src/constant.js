@@ -36,6 +36,7 @@ export const WORLDS_CONFIG = {
     cameraPosition: [0, 1.0, 0],
     cameraFov: 50,
     avatarUrl: AVATAR_FOOTBALL,
+    animationUrl: "/animation/breathing_idle.fbx",
   },
   nature_walk: {
     // nature walk pr avatar 5 

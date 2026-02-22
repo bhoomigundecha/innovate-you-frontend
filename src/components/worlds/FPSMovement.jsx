@@ -30,11 +30,6 @@ export default function FPSMovement({ controlsRef }) {
     if (left) _move.addScaledVector(_right, -SPEED * delta);
 
     camera.position.add(_move);
-
-    // Move orbit target with camera so look-drag still works naturally
-    if (controlsRef?.current) {
-      controlsRef.current.target.add(_move);
-    }
   });
 
   return null;

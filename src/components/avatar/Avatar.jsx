@@ -13,20 +13,41 @@ import { useGLTF, useAnimations } from "@react-three/drei";
  * @param {string}    [props.animation]       — animation clip name to play
  * @param {Function}  [props.onReady]         — called with full avatar API
  * @param {Array}     [props.position]        — [x, y, z]
+ * @param {Array}     [props.rotation]        — [x, y, z]
  * @param {number}    [props.scale]           — uniform scale
  */
 export default function Avatar({
-    url,
-    animationUrls,
-    emotion,
-    talking,
-    animation,
-    onReady,
-    position = [0, 0, 0],
-    scale = 1,
+  url,
+  animationUrls,
+  emotion,
+  talking,
+  animation,
+  onReady,
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  scale = 1,
 }) {
-    const {
-        scene,
+  const {
+    scene,
+    setEmotion,
+    currentEmotion,
+    startTalking,
+    stopTalking,
+    isTalking,
+    playAnimation,
+    stopAnimation,
+    actions,
+    mixer,
+    animationNames,
+  } = useAvatar({ url, animationUrls });
+
+  const readyFired = useRef(false);
+
+  // Fire onReady once
+  useEffect(() => {
+    if (onReady && !readyFired.current) {
+      readyFired.current = true;
+      onReady({
         setEmotion,
         currentEmotion,
         startTalking,
@@ -37,47 +58,45 @@ export default function Avatar({
         actions,
         mixer,
         animationNames,
-    } = useAvatar({ url, animationUrls });
+      });
+    }
+  }, [
+    onReady,
+    setEmotion,
+    currentEmotion,
+    startTalking,
+    stopTalking,
+    isTalking,
+    playAnimation,
+    stopAnimation,
+    actions,
+    mixer,
+    animationNames,
+  ]);
 
-    const readyFired = useRef(false);
+  // Declarative emotion prop
+  useEffect(() => {
+    if (emotion) setEmotion(emotion);
+  }, [emotion, setEmotion]);
 
-    // Fire onReady once
-    useEffect(() => {
-        if (onReady && !readyFired.current) {
-            readyFired.current = true;
-            onReady({
-                setEmotion, currentEmotion,
-                startTalking, stopTalking, isTalking,
-                playAnimation, stopAnimation,
-                actions, mixer, animationNames,
-            });
-        }
-    }, [onReady, setEmotion, currentEmotion, startTalking, stopTalking, isTalking, playAnimation, stopAnimation, actions, mixer, animationNames]);
+  // Declarative talking prop
+  useEffect(() => {
+    if (talking) startTalking();
+    else stopTalking();
+  }, [talking, startTalking, stopTalking]);
 
-    // Declarative emotion prop
-    useEffect(() => {
-        if (emotion) setEmotion(emotion);
-    }, [emotion, setEmotion]);
+  // Declarative animation prop
+  useEffect(() => {
+    if (animation) playAnimation(animation);
+  }, [animation, playAnimation]);
 
-    // Declarative talking prop
-    useEffect(() => {
-        if (talking) startTalking();
-        else stopTalking();
-    }, [talking, startTalking, stopTalking]);
-
-    // Declarative animation prop
-    useEffect(() => {
-        if (animation) playAnimation(animation);
-    }, [animation, playAnimation]);
-
-    return (
-        <primitive
-            object={scene}
-            position={position}
-            scale={scale}
-            dispose={null}
-        />
-    );
+  return (
+    <primitive
+      object={scene}
+      position={position}
+      rotation={rotation}
+      scale={scale}
+      dispose={null}
+    />
+  );
 }
-
-

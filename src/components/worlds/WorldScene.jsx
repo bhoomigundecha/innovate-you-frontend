@@ -3,7 +3,14 @@
 // Looks up WORLDS_CONFIG for that id
 // Renders the 3D scene using that config
 import { v4 as uuid } from "uuid";
-import { Suspense, useRef, useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Suspense,
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
@@ -90,8 +97,10 @@ function Scene({ config, expression, isAvatarTalking }) {
         <Suspense fallback={null}>
           <Avatar
             url={config.avatarUrl}
+            animationUrls={config.animationUrl ? [config.animationUrl] : []}
             position={[0, AVATAR_Y, AVATAR_Z]}
-            scale={1}
+            rotation={config.rotation || [0, 0, 0]}
+            scale={3}
             emotion={expression}
             talking={isAvatarTalking}
           />
@@ -127,10 +136,10 @@ export default function WorldScene() {
   const [isAvatarTalking, setIsAvatarTalking] = useState(false);
 
   const { voiceIdForChat, chatSessionId } = useMemo(() => {
-    const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
+    const character = CHARACTERS.find((c) => c.glb === config?.avatarUrl);
     return {
       voiceIdForChat: character ? character.voice : "Anushka",
-      chatSessionId: "session-1"
+      chatSessionId: "session-1",
     };
   }, [config?.avatarUrl]);
 
@@ -145,13 +154,14 @@ export default function WorldScene() {
   }, []);
 
   // Voice chat — auto-starts mic + WS on mount
-  const { status, isSpeaking, expression, stop, start, requestReport, report } = useVoiceChat({
-    voiceId: voiceIdForChat,
-    id: chatSessionId,
-    wsUrl,
-    onStartTalking,
-    onStopTalking,
-  });
+  const { status, isSpeaking, expression, stop, start, requestReport, report } =
+    useVoiceChat({
+      voiceId: voiceIdForChat,
+      id: chatSessionId,
+      wsUrl,
+      onStartTalking,
+      onStopTalking,
+    });
 
   // Keep a ref to stop so the useEffect doesn't re-run when stop changes
   const stopRef = useRef(stop);
@@ -162,7 +172,10 @@ export default function WorldScene() {
     if (!endingConversation) return;
 
     if (report) {
-      console.log("[WorldScene] ✅ Report received, navigating to dashboard:", report);
+      console.log(
+        "[WorldScene] ✅ Report received, navigating to dashboard:",
+        report,
+      );
       stopRef.current();
       navigate("/dashboard", { state: { report } });
       return;
@@ -281,7 +294,9 @@ export default function WorldScene() {
           top: 18,
           right: 18,
           zIndex: 10,
-          background: endingConversation ? "rgba(239,68,68,0.4)" : "rgba(239,68,68,0.6)",
+          background: endingConversation
+            ? "rgba(239,68,68,0.4)"
+            : "rgba(239,68,68,0.6)",
           backdropFilter: "blur(8px)",
           border: "1px solid rgba(255,255,255,0.25)",
           borderRadius: 10,
@@ -292,7 +307,7 @@ export default function WorldScene() {
           fontWeight: 600,
           display: "flex",
           alignItems: "center",
-          gap: 8
+          gap: 8,
         }}
       >
         {endingConversation ? (
@@ -357,14 +372,17 @@ export default function WorldScene() {
             fontWeight: 500,
           }}
         >
-          {isSpeaking ? "🗣 Recording..." : `🎙 ${status === "streaming" ? "Hold Space to talk" : status}`}
+          {isSpeaking
+            ? "🗣 Recording..."
+            : `🎙 ${status === "streaming" ? "Hold Space to talk" : status}`}
         </span>
         <button
           onClick={status === "streaming" ? stop : start}
           style={{
-            background: status === "streaming"
-              ? "rgba(239,68,68,0.7)"
-              : "rgba(34,197,94,0.7)",
+            background:
+              status === "streaming"
+                ? "rgba(239,68,68,0.7)"
+                : "rgba(34,197,94,0.7)",
             backdropFilter: "blur(8px)",
             border: "1px solid rgba(255,255,255,0.25)",
             borderRadius: 10,
@@ -388,33 +406,51 @@ export default function WorldScene() {
           />
         </Canvas>
       </KeyboardControls>
-      <SafetyModal isOpen={isSafetyModalOpen} onClose={() => setIsSafetyModalOpen(false)} />
+      <SafetyModal
+        isOpen={isSafetyModalOpen}
+        onClose={() => setIsSafetyModalOpen(false)}
+      />
 
       {/* Analyzing Overlay */}
       {endingConversation && !report && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1000,
-          background: "rgba(0,0,0,0.85)",
-          backdropFilter: "blur(12px)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#fff"
-        }}>
-          <div style={{
-            width: 60,
-            height: 60,
-            border: "4px solid rgba(255,255,255,0.1)",
-            borderTop: "4px solid #3b82f6",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-            marginBottom: 24
-          }} />
-          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, letterSpacing: -0.5 }}>Analyzing Conversation</h2>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Preparing your tailored mental wellness report...</p>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(12px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+          }}
+        >
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              border: "4px solid rgba(255,255,255,0.1)",
+              borderTop: "4px solid #3b82f6",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              marginBottom: 24,
+            }}
+          />
+          <h2
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              marginBottom: 8,
+              letterSpacing: -0.5,
+            }}
+          >
+            Analyzing Conversation
+          </h2>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
+            Preparing your tailored mental wellness report...
+          </p>
         </div>
       )}
     </div>

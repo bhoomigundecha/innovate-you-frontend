@@ -14,7 +14,7 @@ export const CHARACTERS = [
     glb: "/avatar2.glb",
     accent: "#7B9ECF",
     pill: "Therapist",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
+    animationGlb: "/animation/Waving.fbx", // RPM pre-retargeted
     voice: "anushka",
   },
   {
@@ -26,7 +26,7 @@ export const CHARACTERS = [
     accent: "#6BA3E0",
     pill: "Friend",
     voice: "abhilash",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
   },
   {
     id: "aris",
@@ -37,7 +37,7 @@ export const CHARACTERS = [
     accent: "#8AAEE0",
     pill: "Supporter",
     voice: "manisha",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
   },
   {
     id: "mark",
@@ -48,7 +48,7 @@ export const CHARACTERS = [
     accent: "#4A86CC",
     pill: "Coach",
     voice: "karun",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx",  // RPM pre-retargeted
+    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
   },
 ];
 
@@ -154,7 +154,9 @@ export default function Characters() {
                 {character.pill}
               </span>
               <h3 className="text-xl font-bold text-white">{character.name}</h3>
-              <p className="text-xs font-semibold text-blue-100">{character.role}</p>
+              <p className="text-xs font-semibold text-blue-100">
+                {character.role}
+              </p>
               <p className="text-xs text-blue-50 leading-relaxed mt-1 line-clamp-2">
                 {character.tagline}
               </p>
@@ -162,7 +164,10 @@ export default function Characters() {
 
             {/* 3-D avatar — fills middle section */}
             <div className="flex-1 relative z-10" style={{ minHeight: 0 }}>
-              <AvatarPreview glb={character.glb} animationGlb={character.animationGlb} />
+              <AvatarPreview
+                glb={character.glb}
+                animationGlb={character.animationGlb}
+              />
             </div>
 
             {/* "Talk to" CTA button */}
