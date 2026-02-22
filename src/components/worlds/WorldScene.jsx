@@ -76,7 +76,7 @@ const KEY_MAP = [
  */
 const AVATAR_Z = -2.5;
 const AVATAR_Y = 0;
-const TARGET_Y = 1.0; // avatar's torso / center-of-body
+const TARGET_Y = 1.7; // avatar's torso / center-of-body
 const CAM_Y = 1.0; // viewer eye height
 
 function Scene({ config, expression, isAvatarTalking }) {
@@ -100,7 +100,7 @@ function Scene({ config, expression, isAvatarTalking }) {
             animationUrls={config.animationUrl ? [config.animationUrl] : []}
             position={[0, AVATAR_Y, AVATAR_Z]}
             rotation={config.rotation || [0, 0, 0]}
-            scale={3}
+            scale={2}
             emotion={expression}
             talking={isAvatarTalking}
           />
