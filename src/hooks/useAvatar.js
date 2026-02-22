@@ -195,7 +195,7 @@ export function useAvatar({
                                 // Fix for Mixamo FBX animations that rotate the entire rig 90 degrees horizontally
                                 if (
                                     prop === "quaternion" &&
-                                    animUrl.includes("breathing_idle") &&
+                                    (animUrl.includes("breathing_idle") || animUrl.includes("parker_idle") || animUrl.includes("standing_aris")) &&
                                     (boneLower.includes("hip") || boneLower.includes("hips") || boneLower.includes("root") || boneLower.includes("pelv") || boneLower.includes("pelvis"))
                                 ) {
                                     return false;

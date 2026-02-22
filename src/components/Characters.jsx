@@ -26,7 +26,7 @@ export const CHARACTERS = [
     accent: "#6BA3E0",
     pill: "Friend",
     voice: "abhilash",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
+    // animationGlb: "/animation/Waving.fbx", // RPM pre-retargeted
   },
   {
     id: "aris",
@@ -37,7 +37,7 @@ export const CHARACTERS = [
     accent: "#8AAEE0",
     pill: "Supporter",
     voice: "manisha",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
+    // animationGlb: "/animation/waving_aris.fbx", // RPM pre-retargeted
   },
   {
     id: "mark",
@@ -48,7 +48,7 @@ export const CHARACTERS = [
     accent: "#4A86CC",
     pill: "Coach",
     voice: "karun",
-    animationGlb: "/animation/M_Standing_Idle_Variations_001.fbx", // RPM pre-retargeted
+    // animationGlb: "/animation/Waving.fbx", // RPM pre-retargeted
   },
 ];
 

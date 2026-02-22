@@ -22,6 +22,7 @@ export const WORLDS_CONFIG = {
     id: "city_walk",
     label: "The City Walk",
     exr: "/assets/avatar_bg/city_walk.exr",
+    animationUrl: "/animation/parker_idle.fbx",
     ground: { height: 15, radius: 60, scale: 30 },
     cameraPosition: [0, 1.0, 0],
     cameraFov: 50,
@@ -47,5 +48,6 @@ export const WORLDS_CONFIG = {
     cameraPosition: [0, 1.0, 0],
     cameraFov: 50,
     avatarUrl: AVATAR_NATURE,
+    animationUrl : "/animation/standing_aris.fbx",
   },
 };
