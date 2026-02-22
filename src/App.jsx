@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar.jsx";
 import Hero from "./components/Hero.jsx";
 import Characters from "./components/Characters.jsx";
 import Worlds from "./components/Worlds.jsx";
+import AboutUs from "./components/AboutUs.jsx";
 import WorldScene from "./components/worlds/WorldScene.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 // at this point ye bas landing page and re route krra hai
@@ -14,9 +15,10 @@ function LandingPage() {
       <div className="relative bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,#dbeafe_0%,#c7d7fe_30%,#bfcffe_55%,#e0e7ff_75%,#f0f4ff_100%)]">
         <Navbar />
         <Hero />
-        <Characters />
         <Worlds />
+        <Characters />
       </div>
+      <AboutUs />
     </div>
   );
 }
