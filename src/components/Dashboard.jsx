@@ -24,6 +24,7 @@ const DEFAULT_REPORT = {
   phq9: { score: 12, maxScore: 27, level: "MOD", change: "+2%" },
   gad7: { score: 8, maxScore: 21, level: "MILD", change: "-5%" },
   moodPoints: MOOD_POINTS,
+  moodLabel: "Neutral",
   wellnessScore: 78,
   wellnessChange: "+5%",
   diagnosticBars: SIDE_MENU_BARS,
@@ -31,6 +32,18 @@ const DEFAULT_REPORT = {
     hour: "numeric",
     minute: "2-digit",
   }),
+  earlyIntervention: {
+    summary: "Based on today's assessment, we've curated prioritized support for you.",
+    resources: [
+      { label: "Crisis Support Plan", url: "#" },
+      { label: "Specialized Resources", url: "#" }
+    ],
+    cta: { label: "Book a Specialist", url: "#" }
+  },
+  interventions: [
+    { title: "Guided Deep Breathing", description: "5-minute calm session", icon: "🌬" },
+    { title: "Log Your Mood", description: "Daily journal entry", icon: "📝" }
+  ]
 };
 
 export default function Dashboard() {
@@ -79,25 +92,51 @@ export default function Dashboard() {
     }
 
     // Mood trajectory → moodPoints (array of numbers 0-100)
-    if (report.mood_trajectory?.data) {
-      transformed.moodPoints = report.mood_trajectory.data.map((d) =>
-        typeof d === "number" ? d : (d?.value ?? 50)
-      );
+    if (report.mood_trajectory) {
+      if (report.mood_trajectory.data) {
+        transformed.moodPoints = report.mood_trajectory.data.map((d) =>
+          typeof d === "number" ? d : (d?.value ?? 50)
+        );
+      }
+      if (report.mood_trajectory.average_label) {
+        transformed.moodLabel = report.mood_trajectory.average_label.charAt(0).toUpperCase() + report.mood_trajectory.average_label.slice(1);
+      }
+    }
+
+    // Early Intervention
+    if (report.early_intervention) {
+      transformed.earlyIntervention = {
+        summary: report.early_intervention.summary,
+        resources: report.early_intervention.resources?.map(r => ({
+          label: r.label || r.title || "Resource",
+          url: r.url || r.action_url || "#"
+        })) || [],
+        cta: {
+          label: report.early_intervention.cta?.label || "Get Help",
+          url: report.early_intervention.cta?.url || "#"
+        }
+      };
+    }
+
+    // Interventions
+    if (report.interventions && Array.isArray(report.interventions)) {
+      transformed.interventions = report.interventions.map(i => ({
+        title: i.title || i.name || "Intervention",
+        description: i.description || "Personalized wellness activity",
+        icon: i.icon || "✨",
+        url: i.action_url || "#"
+      }));
     }
 
     // Diagnostic markers → diagnosticBars
     if (report.diagnostic_markers) {
       const COLORS = ["bg-blue-500", "bg-blue-500/80", "bg-blue-500/60", "bg-blue-500/90"];
       transformed.diagnosticBars = report.diagnostic_markers.map((m, i) => ({
-        label: m.label || m.name || `Marker ${i + 1}`,
+        label: m.label || m.name || m.type || `Marker ${i + 1}`,
         value: m.value ?? m.score ?? 0,
         color: COLORS[i % COLORS.length],
       }));
-      // If backend sends empty list, UI will show zero bars instead of defaults
     }
-
-    // interventions mapping (if UI used it)
-    // For now we still use the buttons hardcoded below, but we could map them here.
 
     // Session last activity
     if (report.session?.last_activity) {
@@ -226,7 +265,7 @@ export default function Dashboard() {
               </h3>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <span className="text-xs text-zinc-500">AVERAGE MOOD</span>
+                <span className="text-xs text-zinc-500 uppercase">{reportData.moodLabel || "AVERAGE MOOD"}</span>
               </div>
             </div>
             <div className="h-44">
@@ -289,32 +328,22 @@ export default function Dashboard() {
                 Intervention & Wellness
               </h3>
               <div className="space-y-3">
-                <button className="w-full flex items-center justify-between p-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800/80 text-left transition-colors">
-                  <span className="flex items-center gap-3">
-                    <span className="text-2xl">🌬</span>
-                    <div>
-                      <p className="font-medium text-white">
-                        Guided Deep Breathing
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        5-minute calm session
-                      </p>
-                    </div>
-                  </span>
-                  <span className="text-zinc-500">→</span>
-                </button>
-                <button className="w-full flex items-center justify-between p-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800/80 text-left transition-colors">
-                  <span className="flex items-center gap-3">
-                    <span className="text-2xl">📝</span>
-                    <div>
-                      <p className="font-medium text-white">Log Your Mood</p>
-                      <p className="text-xs text-zinc-500">
-                        Daily journal entry
-                      </p>
-                    </div>
-                  </span>
-                  <span className="text-zinc-500">→</span>
-                </button>
+                {reportData.interventions.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => item.url && window.open(item.url, '_blank')}
+                    className="w-full flex items-center justify-between p-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800/80 text-left transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="text-2xl">{item.icon}</span>
+                      <div>
+                        <p className="font-medium text-white">{item.title}</p>
+                        <p className="text-xs text-zinc-500">{item.description}</p>
+                      </div>
+                    </span>
+                    <span className="text-zinc-500">→</span>
+                  </button>
+                ))}
               </div>
             </div>
             <div className="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-5">
@@ -322,21 +351,27 @@ export default function Dashboard() {
                 Early Intervention
               </h3>
               <p className="text-xs text-zinc-500 mb-4">
-                Based on today&apos;s PHQ-9 score, we&apos;ve curated prioritized
-                support for you.
+                {reportData.earlyIntervention.summary}
               </p>
               <div className="space-y-2 mb-4">
-                <button className="w-full flex items-center justify-between py-2.5 px-3 text-sm text-zinc-300 hover:bg-zinc-800 rounded-xl transition-colors">
-                  <span className="flex items-center gap-2">❄ Crisis Support Plan</span>
-                  <span className="text-zinc-500">↗</span>
-                </button>
-                <button className="w-full flex items-center justify-between py-2.5 px-3 text-sm text-zinc-300 hover:bg-zinc-800 rounded-xl transition-colors">
-                  <span className="flex items-center gap-2">✚ Specialized Resources</span>
-                  <span className="text-zinc-500">↗</span>
-                </button>
+                {reportData.earlyIntervention.resources.map((res, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => res.url && window.open(res.url, '_blank')}
+                    className="w-full flex items-center justify-between py-2.5 px-3 text-sm text-zinc-300 hover:bg-zinc-800 rounded-xl transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      {idx === 0 ? '❄' : '✚'} {res.label}
+                    </span>
+                    <span className="text-zinc-500">↗</span>
+                  </button>
+                ))}
               </div>
-              <button className="w-full py-3 rounded-xl bg-blue-500 text-white font-semibold text-sm hover:bg-blue-600 transition-colors">
-                Book a Specialist
+              <button
+                onClick={() => reportData.earlyIntervention.cta.url && window.open(reportData.earlyIntervention.cta.url, '_blank')}
+                className="w-full py-3 rounded-xl bg-blue-500 text-white font-semibold text-sm hover:bg-blue-600 transition-colors"
+              >
+                {reportData.earlyIntervention.cta.label}
               </button>
             </div>
           </div>
