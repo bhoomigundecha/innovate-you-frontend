@@ -203,6 +203,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
     setStatus("idle");
     setIsSpeaking(false);
     setExpression(null);
+    setReport(null);
   }, [cleanupAudioInput, cleanupAudioOutput]);
 
   // ── Push-to-talk keyboard handlers ──────────
@@ -270,6 +271,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
     const gen = genRef.current;
     setStatus("connecting");
     setError(null);
+    setReport(null);
 
     // Update params ref immediately to prevent race conditions
     paramsRef.current = { id, voiceId, wsUrl: currentUrl };

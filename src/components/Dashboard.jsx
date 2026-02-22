@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import SafetyModal from "./SafetyModal";
 
 const getCurrentUser = () => {
   try {
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const location = useLocation();
   const [user, setUser] = useState(getCurrentUser);
   const [reportData, setReportData] = useState(DEFAULT_REPORT);
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
 
   // Read report passed from WorldScene via navigation state and transform it
   useEffect(() => {
@@ -175,6 +177,14 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Safety SOS Button */}
+          <button
+            onClick={() => setIsSafetyModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 transition-all active:scale-95 mr-2"
+          >
+            <span className="text-[10px] font-black uppercase tracking-tighter">SOS</span>
+          </button>
+
           <button
             type="button"
             className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
@@ -202,6 +212,16 @@ export default function Dashboard() {
           </button>
         </div>
       </header>
+
+      {/* Severe Alert Banner */}
+      {(reportData.phq9.score > 20 || reportData.gad7.score > 15) && (
+        <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
+          <span className="text-xl">⚠️</span>
+          <p className="text-sm font-bold text-red-400">
+            Your scores indicate severe distress. Please consider reaching out for support via the SOS button.
+          </p>
+        </div>
+      )}
 
       <div className="flex gap-6 p-6 max-w-6xl mx-auto justify-center">
         <main className="flex-1 min-w-0 max-w-2xl">
@@ -446,6 +466,7 @@ export default function Dashboard() {
           </div>
         </aside>
       </div>
+      <SafetyModal isOpen={isSafetyModalOpen} onClose={() => setIsSafetyModalOpen(false)} />
     </div>
   );
 }

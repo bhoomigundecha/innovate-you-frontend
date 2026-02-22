@@ -18,6 +18,7 @@ import { useVoiceChat } from "../../hooks/useVoiceChat.js";
 import FPSMovement from "./FPSMovement.jsx";
 import Avatar from "../avatar/Avatar.jsx";
 import { CHARACTERS } from "../Characters.jsx";
+import SafetyModal from "../SafetyModal.jsx";
 
 /** Shows a centred loading spinner with progress % while assets load. */
 function Loader() {
@@ -121,6 +122,7 @@ export default function WorldScene() {
   const navigate = useNavigate();
   const config = WORLDS_CONFIG[id];
   const [endingConversation, setEndingConversation] = useState(false);
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
 
   const { voiceIdForChat, chatSessionId } = useMemo(() => {
     const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
@@ -154,12 +156,12 @@ export default function WorldScene() {
       return;
     }
 
-    // Fallback: if no report arrives within 10s, navigate anyway
+    // Fallback: if no report arrives within 60s, navigate anyway
     const timeout = setTimeout(() => {
       console.warn("[WorldScene] ⏰ Timeout — navigating without report");
       stopRef.current();
       navigate("/dashboard");
-    }, 10000);
+    }, 60000);
 
     return () => clearTimeout(timeout);
   }, [endingConversation, report, navigate]);
@@ -229,6 +231,29 @@ export default function WorldScene() {
         }}
       >
         ← Back
+      </button>
+
+      {/* SOS Button — top overlay */}
+      <button
+        onClick={() => setIsSafetyModalOpen(true)}
+        style={{
+          position: "absolute",
+          top: 18,
+          left: 105, // Positioned next to Back button
+          zIndex: 10,
+          background: "rgba(239,68,68,0.2)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(239,68,68,0.4)",
+          borderRadius: 10,
+          color: "#fff",
+          padding: "7px 14px",
+          cursor: "pointer",
+          fontSize: 12,
+          fontWeight: 800,
+          letterSpacing: 0.5,
+        }}
+      >
+        🆘 SOS
       </button>
 
       {/* End Conversation button — top right */}
@@ -347,6 +372,35 @@ export default function WorldScene() {
           <Scene config={config} expression={expression} />
         </Canvas>
       </KeyboardControls>
+      <SafetyModal isOpen={isSafetyModalOpen} onClose={() => setIsSafetyModalOpen(false)} />
+
+      {/* Analyzing Overlay */}
+      {endingConversation && !report && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000,
+          background: "rgba(0,0,0,0.85)",
+          backdropFilter: "blur(12px)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff"
+        }}>
+          <div style={{
+            width: 60,
+            height: 60,
+            border: "4px solid rgba(255,255,255,0.1)",
+            borderTop: "4px solid #3b82f6",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            marginBottom: 24
+          }} />
+          <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, letterSpacing: -0.5 }}>Analyzing Conversation</h2>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Preparing your tailored mental wellness report...</p>
+        </div>
+      )}
     </div>
   );
 }
