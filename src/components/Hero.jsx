@@ -1,6 +1,7 @@
 export default function Hero() {
   return (
     <section
+      id="hero"
       className="
       relative w-full min-h-screen pt-20
       flex flex-col items-center justify-center
@@ -45,7 +46,7 @@ export default function Hero() {
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
           <a
-            href="#"
+            href="#worlds"
             id="explore-btn"
             className="
               text-sm font-semibold text-gray-900 no-underline
@@ -59,7 +60,7 @@ export default function Hero() {
             Explore Worlds
           </a>
           <a
-            href="#"
+            href="#characters"
             id="getstarted-btn"
             className="
               text-sm font-semibold text-white no-underline

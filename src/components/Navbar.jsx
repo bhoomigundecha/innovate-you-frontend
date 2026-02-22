@@ -14,15 +14,15 @@ export default function Navbar() {
       "
       >
         {/* Logo */}
-        <span className="text-2xl font-extrabold tracking-tight text-gray-900 cursor-pointer whitespace-nowrap">
+        <a href="#hero" className="text-2xl font-extrabold tracking-tight text-gray-900 cursor-pointer whitespace-nowrap no-underline hover:text-gray-700">
           Soulbot.
-        </span>
+        </a>
 
         {/* Links */}
         <ul className="hidden md:flex items-center gap-7 list-none">
           <li>
             <a
-              href="#"
+              href="#hero"
               className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors no-underline"
             >
               About Us
@@ -30,7 +30,7 @@ export default function Navbar() {
           </li>
           <li>
             <a
-              href="#"
+              href="#characters"
               className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors no-underline"
             >
               Features
@@ -38,18 +38,18 @@ export default function Navbar() {
           </li>
           <li>
             <a
-              href="#"
+              href="#characters"
               className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors no-underline"
             >
-              Worlds
+              Avatars
             </a>
           </li>
           <li>
             <a
-              href="#"
-              className="text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors no-underlinee"
+              href="#worlds"
+              className="text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors no-underline"
             >
-              Templates
+              Worlds
             </a>
           </li>
         </ul>

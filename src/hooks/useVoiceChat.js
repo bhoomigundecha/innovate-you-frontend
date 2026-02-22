@@ -97,7 +97,7 @@ function float32ToWavBase64(samples, sampleRate) {
 // Hook
 // ──────────────────────────────────────────────
 
-export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
+export function useVoiceChat({ voiceId, id, wsUrl, onReport, onStartTalking, onStopTalking } = {}) {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -319,7 +319,18 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
     socket.on("tts_audio", (data) => {
       if (gen !== genRef.current || !data?.audio) return;
       if (audioCtxRef.current) {
-        playBase64Audio(audioCtxRef.current, data.audio);
+        // Trigger avatar to start talking
+        if (typeof onStartTalking === "function") {
+          onStartTalking();
+        }
+        
+        // Play audio and setup stop callback
+        playBase64Audio(audioCtxRef.current, data.audio, () => {
+          // Audio finished playing - stop avatar talking
+          if (typeof onStopTalking === "function") {
+            onStopTalking();
+          }
+        });
       }
     });
 

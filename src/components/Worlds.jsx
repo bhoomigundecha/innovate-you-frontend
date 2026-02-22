@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// this is the 3-card world carousel
-// also ismei hum sab world se related information lete hai and then wo world scene mei render hota hai
+
 const WORLDS = [
   {
     id: "court",
@@ -11,8 +9,7 @@ const WORLDS = [
     description:
       "Step onto the field. Your coach is waiting — ready to push you, challenge you, and celebrate every win with you.",
     bg: "#8AAEE0",
-    accentHex: "#395886",
-    textAccent: "#1e3a5f",
+    emoji: "⚽",
   },
   {
     id: "classroom",
@@ -22,8 +19,7 @@ const WORLDS = [
     description:
       "Walk the city streets with your AI guide. Discover, learn, and grow through the pulse of the city around you.",
     bg: "#B1C9EF",
-    accentHex: "#395886",
-    textAccent: "#395886",
+    emoji: "🏙️",
   },
   {
     id: "cafe",
@@ -33,8 +29,7 @@ const WORLDS = [
     description:
       "A calm path through nature. Breathe in the fresh air while your companion listens and guides you.",
     bg: "#D5DEEF",
-    accentHex: "#628ECB",
-    textAccent: "#395886",
+    emoji: "🌿",
   },
   {
     id: "garden",
@@ -44,8 +39,7 @@ const WORLDS = [
     description:
       "A peaceful escape to slow down, reflect, and find balance. Your wellness companion is here whenever you need stillness.",
     bg: "#C3D4EC",
-    accentHex: "#628ECB",
-    textAccent: "#395886",
+    emoji: "🌸",
   },
   {
     id: "studio",
@@ -55,8 +49,7 @@ const WORLDS = [
     description:
       "Unlock your creative side. Your AI collaborator helps you brainstorm, build, and express yourself freely.",
     bg: "#F0F3FA",
-    accentHex: "#8AAEE0",
-    textAccent: "#628ECB",
+    emoji: "🎨",
   },
   {
     id: "home",
@@ -66,28 +59,12 @@ const WORLDS = [
     description:
       "Return to a place of warmth and familiarity. Your AI companion is right here, ready to share a quiet moment with you.",
     bg: "#EEE8F0",
-    accentHex: "#9B7FBD",
-    textAccent: "#6B4F8E",
+    emoji: "🏠",
   },
 ];
 
-const TOTAL = WORLDS.length;
-
 export default function Worlds() {
-  const [active, setActive] = useState(0);
   const navigate = useNavigate();
-
-  // Auto-advance every 2.8 s
-  useEffect(() => {
-    const t = setInterval(() => setActive((p) => (p + 1) % TOTAL), 2800);
-    return () => clearInterval(t);
-  }, []);
-
-  const prev = () => setActive((p) => (p - 1 + TOTAL) % TOTAL);
-  const next = () => setActive((p) => (p + 1) % TOTAL);
-
-  const leftIdx = (active - 1 + TOTAL) % TOTAL;
-  const rightIdx = (active + 1) % TOTAL;
 
   return (
     <section
@@ -95,7 +72,7 @@ export default function Worlds() {
       id="worlds"
     >
       {/* ── Section header ── */}
-      <div className="flex items-end justify-between mb-14 w-full max-w-5xl px-4">
+      <div className="flex items-end justify-between mb-14 w-full max-w-7xl px-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
             Our Worlds
@@ -105,157 +82,55 @@ export default function Worlds() {
             <span className="font-serif italic font-normal">escape</span>
           </h2>
         </div>
-        <a
-          href="#"
-          className="hidden md:flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-700 transition-colors no-underline"
-        >
-          See All
-          <span className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 text-xs">
-            ↗
-          </span>
-        </a>
       </div>
 
-      {/* ── 3-card strip — negative margin pulls them together ── */}
-      <div className="flex items-center justify-center w-full max-w-5xl px-4">
-        {/* Left peek card */}
-        <div
-          onClick={prev}
-          className="flex-shrink-0 cursor-pointer rounded-2xl p-5 relative overflow-hidden border border-gray-100 shadow-lg flex flex-col gap-2 opacity-80 hover:opacity-100 transition-opacity"
-          style={{
-            background: "#ffffff",
-            width: 320,
-            height: 360,
-            transform: "rotate(-8deg)",
-            transformOrigin: "bottom center",
-            marginRight: -60,
-            zIndex: 1,
-          }}
-        >
-          {/* Blob */}
+      {/* ── World cards grid (simple structure like avatars) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-7xl px-4">
+        {WORLDS.map((world) => (
           <div
-            className="absolute bottom-0 right-0 w-36 h-36 rounded-full opacity-10"
-            style={{ background: "#3B6AC4", transform: "translate(30%, 30%)" }}
-          />
-          <span className="text-3xl">{WORLDS[leftIdx].emoji}</span>
-          <div>
-            <h3 className="text-sm font-bold text-gray-700">
-              {WORLDS[leftIdx].label}
-            </h3>
-            <p className="text-xs font-semibold mt-0.5 text-gray-400">
-              {WORLDS[leftIdx].tagline}
-            </p>
-          </div>
-        </div>
-
-        {/* Centre card */}
-        <div
-          className="flex-shrink-0 rounded-3xl p-7 relative overflow-hidden shadow-2xl flex flex-col justify-between"
-          style={{
-            background: "linear-gradient(135deg, #6BA3E0 0%, #4A86CC 100%)",
-            width: 420,
-            height: 440,
-            zIndex: 10,
-          }}
-        >
-          {/* Blob */}
-          <div
-            className="absolute bottom-0 right-0 w-52 h-52 rounded-full"
+            key={world.id}
+            className="rounded-3xl relative overflow-hidden shadow-xl flex flex-col hover:shadow-2xl transition-all hover:-translate-y-1 min-h-[320px]"
             style={{
-              background: "rgba(255,255,255,0.1)",
-              transform: "translate(30%, 30%)",
+              background: "linear-gradient(135deg, #5B8FD4 0%, #3B6AC4 100%)",
+              minHeight: 250,
             }}
-          />
-
-          <div className="relative z-10">
-            <h3 className="text-2xl font-bold text-white mb-1">
-              {WORLDS[active].label}
-            </h3>
-            <p className="text-xs font-semibold mb-4 text-blue-200">
-              {WORLDS[active].tagline}
-            </p>
-            <p className="text-sm text-blue-100 leading-relaxed">
-              {WORLDS[active].description}
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between relative z-10">
-            <span className="text-sm font-semibold text-white">
-              Enter World
-            </span>
-            <button
-              onClick={() => navigate(`/world/${WORLDS[active].worldId}`)}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-md transition-transform hover:scale-110"
+          >
+            {/* Blob decoration */}
+            <div
+              className="absolute bottom-0 right-0 w-40 h-40 rounded-full pointer-events-none"
               style={{
-                background: "rgba(255,255,255,0.2)",
-                color: "#fff",
-                border: "1px solid rgba(255,255,255,0.4)",
-              }}
-            >
-              →
-            </button>
-          </div>
-        </div>
-
-        {/* Right peek card */}
-        <div
-          onClick={next}
-          className="flex-shrink-0 cursor-pointer rounded-2xl p-5 relative overflow-hidden border border-gray-100 shadow-lg flex flex-col gap-2 opacity-80 hover:opacity-100 transition-opacity"
-          style={{
-            background: "#ffffff",
-            width: 320,
-            height: 360,
-            transform: "rotate(8deg)",
-            transformOrigin: "bottom center",
-            marginLeft: -60,
-            zIndex: 1,
-          }}
-        >
-          {/* Blob */}
-          <div
-            className="absolute bottom-0 right-0 w-36 h-36 rounded-full opacity-10"
-            style={{ background: "#3B6AC4", transform: "translate(30%, 30%)" }}
-          />
-          <span className="text-3xl">{WORLDS[rightIdx].emoji}</span>
-          <div>
-            <h3 className="text-sm font-bold text-gray-700">
-              {WORLDS[rightIdx].label}
-            </h3>
-            <p className="text-xs font-semibold mt-0.5 text-gray-400">
-              {WORLDS[rightIdx].tagline}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Dots ── */}
-      <div className="flex items-center gap-5 mt-10">
-        <button
-          onClick={prev}
-          className="w-9 h-9 rounded-full bg-white/70 border border-white/50 backdrop-blur-sm flex items-center justify-center text-gray-500 hover:bg-white transition-all text-sm shadow-sm"
-        >
-          ←
-        </button>
-        <div className="flex gap-2">
-          {WORLDS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActive(i)}
-              className="rounded-full transition-all duration-300"
-              style={{
-                width: active === i ? 24 : 8,
-                height: 8,
-                background: active === i ? "#628ECB" : "#c7d7fe",
+                background: "rgba(255,255,255,0.08)",
+                transform: "translate(20%, 20%)",
               }}
             />
-          ))}
-        </div>
-        <button
-          onClick={next}
-          className="w-9 h-9 rounded-full bg-white/70 border border-white/50 backdrop-blur-sm flex items-center justify-center text-gray-500 hover:bg-white transition-all text-sm shadow-sm"
-        >
-          →
-        </button>
+
+            {/* Emoji + Text area */}
+            <div className="relative z-10 px-6 pt-6 pb-3 flex flex-col gap-2">
+              <span className="text-4xl">{world.emoji}</span>
+              <h3 className="text-xl font-bold text-white">{world.label}</h3>
+              <p className="text-xs font-semibold text-white/90">{world.tagline}</p>
+              <p className="text-sm text-white/80 leading-relaxed line-clamp-3">
+                {world.description}
+              </p>
+            </div>
+
+            {/* Enter World CTA */}
+            <div className="mt-auto px-6 pb-6 relative z-10">
+              <button
+                onClick={() => navigate(`/world/${world.worldId}`)}
+                className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm transition-all hover:bg-white/20"
+                style={{
+                  background: "rgba(255,255,255,0.15)",
+                  color: "#fff",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                Enter World
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
