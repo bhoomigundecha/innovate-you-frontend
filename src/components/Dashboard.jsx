@@ -39,15 +39,78 @@ export default function Dashboard() {
   const [user, setUser] = useState(getCurrentUser);
   const [reportData, setReportData] = useState(DEFAULT_REPORT);
 
-  // Read report passed from WorldScene via navigation state
+  // Read report passed from WorldScene via navigation state and transform it
   useEffect(() => {
     const report = location.state?.report;
-    if (report) {
-      setReportData((prev) => ({
-        ...prev,
-        ...report,
-      }));
+    console.log("[Dashboard] 📥 Received report state:", report);
+    if (!report) return;
+
+    // Map backend structure → dashboard structure
+    const transformed = {};
+
+    // User name override
+    if (report.user?.name) {
+      try {
+        const existing = JSON.parse(localStorage.getItem("innovateYou_user") || "{}");
+        localStorage.setItem("innovateYou_user", JSON.stringify({ ...existing, name: report.user.name }));
+      } catch (_) { }
     }
+
+    // PHQ-9
+    if (report.assessments?.phq9) {
+      const p = report.assessments.phq9;
+      transformed.phq9 = {
+        score: p.score ?? 0,
+        maxScore: 27,
+        level: (p.severity || "None").toUpperCase().slice(0, 4),
+        change: p.change_percentage != null ? `${p.change_percentage > 0 ? "+" : ""}${p.change_percentage}%` : "0%",
+      };
+    }
+
+    // GAD-7
+    if (report.assessments?.gad7) {
+      const g = report.assessments.gad7;
+      transformed.gad7 = {
+        score: g.score ?? 0,
+        maxScore: 21,
+        level: (g.severity || "None").toUpperCase().slice(0, 4),
+        change: g.change_percentage != null ? `${g.change_percentage > 0 ? "+" : ""}${g.change_percentage}%` : "0%",
+      };
+    }
+
+    // Mood trajectory → moodPoints (array of numbers 0-100)
+    if (report.mood_trajectory?.data) {
+      transformed.moodPoints = report.mood_trajectory.data.map((d) =>
+        typeof d === "number" ? d : (d?.value ?? 50)
+      );
+    }
+
+    // Diagnostic markers → diagnosticBars
+    if (report.diagnostic_markers) {
+      const COLORS = ["bg-blue-500", "bg-blue-500/80", "bg-blue-500/60", "bg-blue-500/90"];
+      transformed.diagnosticBars = report.diagnostic_markers.map((m, i) => ({
+        label: m.label || m.name || `Marker ${i + 1}`,
+        value: m.value ?? m.score ?? 0,
+        color: COLORS[i % COLORS.length],
+      }));
+      // If backend sends empty list, UI will show zero bars instead of defaults
+    }
+
+    // interventions mapping (if UI used it)
+    // For now we still use the buttons hardcoded below, but we could map them here.
+
+    // Session last activity
+    if (report.session?.last_activity) {
+      try {
+        transformed.lastActivity = new Date(report.session.last_activity).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+      } catch (_) { }
+    }
+
+    console.log("[Dashboard] 🛠 Transformed data:", transformed);
+    setReportData((prev) => ({ ...prev, ...transformed }));
   }, [location.state]);
 
   useEffect(() => {

@@ -108,6 +108,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
   const socketRef = useRef(null);
   const audioCtxRef = useRef(null);
   const genRef = useRef(0);
+  const paramsRef = useRef({ voiceId: null, id: null, wsUrl: null });
 
   // Initialize audio input/output hooks
   const {
@@ -169,21 +170,23 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
   const requestReport = useCallback(() => {
     const socket = socketRef.current;
     if (socket?.connected) {
+      console.log("[useVoiceChat] 📣 end_conversation requested on socket:", socket.id);
       socket.emit("end_conversation");
-      console.log("[useVoiceChat] 📣 end_conversation requested");
     } else {
-      console.warn("[useVoiceChat] socket not connected - cannot request report");
+      console.warn("[useVoiceChat] ⚠️ socket not connected - cannot request report. Present?", !!socket);
     }
   }, []);
 
   // ── Cleanup ─────────────────────────────────
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((reason = "manual") => {
+    console.log(`[useVoiceChat] 🧹 Full cleanup starting (Reason: ${reason})...`);
     genRef.current += 1;
 
     cleanupAudioInput();
     cleanupAudioOutput();
 
     if (socketRef.current) {
+      console.log(`[useVoiceChat] 🔌 Disconnecting socket: ${socketRef.current.id} (gen: ${genRef.current})`);
       socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -193,6 +196,9 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
       audioCtxRef.current.close().catch(() => { });
       audioCtxRef.current = null;
     }
+
+    // Reset params ref on cleanup so we can re-connect if needed
+    paramsRef.current = { voiceId: null, id: null, wsUrl: null };
 
     setStatus("idle");
     setIsSpeaking(false);
@@ -208,9 +214,13 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
       e.preventDefault();
 
       if (!isRecording()) {
+        if (!audioCtxRef.current) {
+          console.warn("[useVoiceChat] ⚠️ AudioContext not ready. Recording skipped.");
+          return;
+        }
         startRecording();
         setIsSpeaking(true);
-        setExpression(null); // Clear expression when user starts speaking
+        setExpression(null);
         console.log("[useVoiceChat] 🎙 Space held — recording");
       }
     };
@@ -224,9 +234,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
       if (isRecording()) {
         stopRecording();
         setIsSpeaking(false);
-        console.log("[useVoiceChat] 🛑 Space released — sending complete WAV + flush");
-
-        // Send all buffered audio as one complete WAV, then flush
+        console.log("[useVoiceChat] 🛑 Space released — sending WAV");
         flushAudio();
       }
     };
@@ -241,32 +249,49 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
 
   // ── Start ───────────────────────────────────
   const start = useCallback(async () => {
-    cleanup();
-    const gen = genRef.current;
+    const currentUrl = wsUrl || DEFAULT_URL;
 
+    // Optimization: Skip if already connected with same params
+    if (
+      socketRef.current &&
+      paramsRef.current.id === id &&
+      paramsRef.current.voiceId === voiceId &&
+      paramsRef.current.wsUrl === currentUrl
+    ) {
+      console.log("[useVoiceChat] ⏭ Skip start: Already connected (Stable)");
+      return;
+    }
+
+    console.log("[useVoiceChat] 🚀 Start connection request. Params:", { id, voiceId, wsUrl: currentUrl });
+
+    // Cleanup previous instance before starting new one
+    cleanup("reconnect");
+
+    const gen = genRef.current;
     setStatus("connecting");
     setError(null);
+
+    // Update params ref immediately to prevent race conditions
+    paramsRef.current = { id, voiceId, wsUrl: currentUrl };
 
     // 1. Initialize audio input
     const audioInputResult = await initAudioInput();
     if (!audioInputResult.success) {
       if (gen !== genRef.current) return;
-      console.error("[useVoiceChat] Audio input init failed:", audioInputResult.error);
+      console.error("[useVoiceChat] ❌ Audio input init failed:", audioInputResult.error);
       setError(audioInputResult.error);
       setStatus("error");
       return;
     }
 
-    // Store AudioContext ref for output
+    // Store AudioContext ref
     if (inputAudioCtxRef.current) {
       audioCtxRef.current = inputAudioCtxRef.current;
     }
 
     // 2. Socket.IO
-    const url = wsUrl || DEFAULT_URL;
-    console.log("[useVoiceChat] 🔌 Connecting to", url);
-
-    const socket = io(url, {
+    console.log("[useVoiceChat] 🔌 Connecting to", currentUrl, "(gen:", gen, ")");
+    const socket = io(currentUrl, {
       transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -275,6 +300,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
 
     socket.on("connect", () => {
       if (gen !== genRef.current) {
+        console.warn("[useVoiceChat] ⚠️ stale connect (gen mismatch), disconnecting socket:", socket.id);
         socket.disconnect();
         return;
       }
@@ -284,7 +310,7 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
 
     socket.on("ready", () => {
       if (gen !== genRef.current) return;
-      console.log("[useVoiceChat] 🟢 Backend ready — hold Space to talk");
+      console.log("[useVoiceChat] 🟢 Backend ready");
       setStatus("streaming");
     });
 
@@ -295,69 +321,60 @@ export function useVoiceChat({ voiceId, id, wsUrl, onReport } = {}) {
       }
     });
 
-    socket.on("tts_complete", () => {
-      if (gen !== genRef.current) return;
-      console.log("[useVoiceChat] ✅ TTS complete");
-    });
-
     socket.on("end_conversation_summary", (payload) => {
-      if (gen !== genRef.current || !payload) return;
+      console.log("[useVoiceChat] 📄 end_conversation_summary (gen:", gen, "current:", genRef.current, "):", payload);
 
-      // Prefer payload.json — fallback to payload.text
-      if (payload?.json) {
-        try {
-          setReport(payload.json);
-          if (typeof onReport === "function") onReport(payload.json);
-        } catch (err) {
-          console.error("[useVoiceChat] Failed handling json payload:", err);
-        }
-        console.log("[useVoiceChat] 📄 Report received:", payload.json);
+      if (gen !== genRef.current || !payload) {
+        if (gen !== genRef.current) console.warn("[useVoiceChat] 🛑 Stale event ignored (gen mismatch)");
         return;
       }
 
-      if (payload?.text) {
+      if (payload?.json) {
+        console.log("[useVoiceChat] ✅ setting report from json:", payload.json);
+        setReport(payload.json);
+        if (typeof onReport === "function") onReport(payload.json);
+      } else if (payload?.text) {
         try {
           const parsed = JSON.parse(payload.text);
+          console.log("[useVoiceChat] ✅ setting report from parsed text:", parsed);
           setReport(parsed);
           if (typeof onReport === "function") onReport(parsed);
         } catch (err) {
-          console.warn("[useVoiceChat] Received non-JSON text summary, passing raw text");
-          const fallback = { raw: payload.text, metadata: { error: "raw_text" } };
+          console.warn("[useVoiceChat] Non-JSON payload.passing raw text");
+          const fallback = { raw: payload.text, metadata: { error: "raw" } };
           setReport(fallback);
           if (typeof onReport === "function") onReport(fallback);
         }
-        return;
       }
-
-      console.warn("[useVoiceChat] Unknown end_conversation_summary payload:", payload);
     });
 
     socket.on("expression", (data) => {
       if (gen !== genRef.current) return;
       const expr = typeof data === "string" ? data : data?.expression;
-      console.log("[useVoiceChat] 🎭 Expression received:", expr);
       if (expr) setExpression(expr);
-    });
-
-    socket.on("connect_error", (err) => {
-      if (gen !== genRef.current) return;
-      console.error("[useVoiceChat] ❌ Connection error:", err.message);
-      setError(new Error(`Socket.IO error: ${err.message}`));
-      setStatus("error");
     });
 
     socket.on("disconnect", (reason) => {
       if (gen !== genRef.current) return;
-      console.log("[useVoiceChat] 🔒 Disconnected:", reason);
+      console.log("[useVoiceChat] 🔒 Disconnected (gen:", gen, "):", reason);
       setStatus("idle");
     });
   }, [voiceId, id, wsUrl, cleanup, initAudioInput, inputAudioCtxRef, playBase64Audio, onReport]);
 
-  // ── Auto-start on mount ─────────────────────
+  // ── Auto-start on mount / Param Change ──────
+  // Effect 1: Start/Reconnect on parameter change
   useEffect(() => {
+    console.log("[useVoiceChat] 🔄 Triggering start() due to param change or mount");
     start();
-    return cleanup;
-  }, [start, cleanup]);
+  }, [id, voiceId, wsUrl, start]);
+
+  // Effect 2: Final cleanup on unmount ONLY
+  useEffect(() => {
+    return () => {
+      console.log("[useVoiceChat] Final unmount cleanup triggered");
+      cleanup("unmount");
+    };
+  }, [cleanup]);
 
   return { status, error, isSpeaking, expression, start, stop: cleanup, requestReport, report };
 }

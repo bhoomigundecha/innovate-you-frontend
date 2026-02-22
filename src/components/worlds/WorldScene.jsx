@@ -3,7 +3,7 @@
 // Looks up WORLDS_CONFIG for that id
 // Renders the 3D scene using that config
 import { v4 as uuid } from "uuid";
-import { Suspense, useRef, useState, useEffect } from "react";
+import { Suspense, useRef, useState, useEffect, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
   Environment,
@@ -122,34 +122,47 @@ export default function WorldScene() {
   const config = WORLDS_CONFIG[id];
   const [endingConversation, setEndingConversation] = useState(false);
 
-  const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
-  const voiceIdForChat = character ? character.voice : "Anushka";
+  const { voiceIdForChat, chatSessionId } = useMemo(() => {
+    const character = CHARACTERS.find(c => c.glb === config?.avatarUrl);
+    return {
+      voiceIdForChat: character ? character.voice : "Anushka",
+      chatSessionId: "session-1"
+    };
+  }, [config?.avatarUrl]);
+
+  const wsUrl = import.meta.env.VITE_WS_BACKEND_URL;
 
   // Voice chat — auto-starts mic + WS on mount
   const { status, isSpeaking, expression, stop, start, requestReport, report } = useVoiceChat({
     voiceId: voiceIdForChat,
-    id: "session-1",
-    wsUrl: import.meta.env.VITE_WS_BACKEND_URL,
+    id: chatSessionId,
+    wsUrl,
   });
+
+  // Keep a ref to stop so the useEffect doesn't re-run when stop changes
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
 
   // When the report arrives after ending, navigate to dashboard with the data
   useEffect(() => {
     if (!endingConversation) return;
 
     if (report) {
-      stop();
+      console.log("[WorldScene] ✅ Report received, navigating to dashboard:", report);
+      stopRef.current();
       navigate("/dashboard", { state: { report } });
       return;
     }
 
-    // Fallback: if no report arrives within 5s, navigate anyway
+    // Fallback: if no report arrives within 10s, navigate anyway
     const timeout = setTimeout(() => {
-      stop();
+      console.warn("[WorldScene] ⏰ Timeout — navigating without report");
+      stopRef.current();
       navigate("/dashboard");
-    }, 5000);
+    }, 10000);
 
     return () => clearTimeout(timeout);
-  }, [endingConversation, report, stop, navigate]);
+  }, [endingConversation, report, navigate]);
 
   if (!config) {
     return (
@@ -220,6 +233,7 @@ export default function WorldScene() {
 
       {/* End Conversation button — top right */}
       <button
+        disabled={endingConversation}
         onClick={() => {
           // Request report from the existing WS, then navigate when it arrives
           requestReport();
@@ -230,18 +244,38 @@ export default function WorldScene() {
           top: 18,
           right: 18,
           zIndex: 10,
-          background: "rgba(239,68,68,0.6)",
+          background: endingConversation ? "rgba(239,68,68,0.4)" : "rgba(239,68,68,0.6)",
           backdropFilter: "blur(8px)",
           border: "1px solid rgba(255,255,255,0.25)",
           borderRadius: 10,
           color: "#fff",
           padding: "7px 16px",
-          cursor: "pointer",
+          cursor: endingConversation ? "not-allowed" : "pointer",
           fontSize: 13,
           fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          gap: 8
         }}
       >
-        End Conversation
+        {endingConversation ? (
+          <>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                border: "2px solid rgba(255,255,255,0.2)",
+                borderTop: "2px solid #fff",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            Please wait...
+          </>
+        ) : (
+          "End Conversation"
+        )}
       </button>
 
       {/* Voice status indicator */}
