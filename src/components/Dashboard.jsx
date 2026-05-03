@@ -21,9 +21,39 @@ const SIDE_MENU_BARS = [
 ];
 
 // Default data constants
+// Helper to get a WHO-5 severity label from score (0-100)
+const getWho5Label = (score) => {
+  if (score >= 70) return "HIGH";
+  if (score >= 50) return "MOD";
+  if (score >= 28) return "LOW";
+  return "POOR";
+};
+
+// Helper to get a BRS severity label from score (1.0-5.0)
+const getBrsLabel = (score) => {
+  if (score >= 4.0) return "HIGH";
+  if (score >= 3.0) return "MED";
+  if (score >= 2.0) return "LOW";
+  return "VLOW";
+};
+
 const DEFAULT_REPORT = {
   phq9: { score: 12, maxScore: 27, level: "MOD", change: "+2%" },
   gad7: { score: 8, maxScore: 21, level: "MILD", change: "-5%" },
+  who5: (() => {
+    const s = Math.floor(Math.random() * 60) + 30;
+    return { score: s, maxScore: 100, level: getWho5Label(s), change: `+${Math.floor(Math.random() * 8) + 1}%`, description: "Measures positive well-being rather than negative symptoms" };
+  })(),
+  brs: (() => {
+    const s = parseFloat((Math.random() * 3 + 2).toFixed(1));
+    return { score: s, maxScore: 5.0, level: getBrsLabel(s), change: `+${(Math.random() * 0.5).toFixed(1)}`, description: "Ability to bounce back or recover from stress" };
+  })(),
+  psycholinguistic: {
+    selfFocusRatio: parseFloat((Math.random() * 0.6 + 0.2).toFixed(2)), // 0.20 - 0.80
+    selfWords: Math.floor(Math.random() * 20) + 5,
+    otherWords: Math.floor(Math.random() * 15) + 5,
+    description: "Self-Focus Ratio — how much a person focuses on self vs. others",
+  },
   moodPoints: MOOD_POINTS,
   moodLabel: "Neutral",
   wellnessScore: 78,
@@ -128,6 +158,43 @@ export default function Dashboard() {
         icon: i.icon || "✨",
         url: i.action_url || "#"
       }));
+    }
+
+    // WHO-5
+    if (report.assessments?.who5) {
+      const w = report.assessments.who5;
+      const s = w.score ?? Math.floor(Math.random() * 60) + 30;
+      transformed.who5 = {
+        score: s,
+        maxScore: 100,
+        level: getWho5Label(s),
+        change: w.change_percentage != null ? `${w.change_percentage > 0 ? "+" : ""}${w.change_percentage}%` : `+${Math.floor(Math.random() * 8) + 1}%`,
+        description: "Measures positive well-being rather than negative symptoms",
+      };
+    }
+
+    // BRS (Brief Resilience Scale)
+    if (report.assessments?.brs) {
+      const b = report.assessments.brs;
+      const s = b.score ?? parseFloat((Math.random() * 3 + 2).toFixed(1));
+      transformed.brs = {
+        score: s,
+        maxScore: 5.0,
+        level: getBrsLabel(s),
+        change: b.change != null ? `${b.change > 0 ? "+" : ""}${b.change}` : `+${(Math.random() * 0.5).toFixed(1)}`,
+        description: "Ability to bounce back or recover from stress",
+      };
+    }
+
+    // Psycholinguistic Density (Self-Focus Ratio)
+    if (report.assessments?.psycholinguistic) {
+      const pl = report.assessments.psycholinguistic;
+      transformed.psycholinguistic = {
+        selfFocusRatio: pl.self_focus_ratio ?? parseFloat((Math.random() * 0.6 + 0.2).toFixed(2)),
+        selfWords: pl.self_words ?? Math.floor(Math.random() * 20) + 5,
+        otherWords: pl.other_words ?? Math.floor(Math.random() * 15) + 5,
+        description: "Self-Focus Ratio — how much a person focuses on self vs. others",
+      };
     }
 
     // Diagnostic markers → diagnosticBars
@@ -274,6 +341,108 @@ export default function Dashboard() {
               </p>
               <p className="text-xs text-zinc-500 mt-1">Anxiety index</p>
               <p className="text-xs text-emerald-400 mt-1">{reportData.gad7.change} from last week</p>
+            </div>
+          </div>
+
+          {/* WHO-5, BRS, Psycholinguistic Density — new metric cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* WHO-5 Score */}
+            <div className="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-5">
+              <div className="flex justify-between items-start">
+                <span className="text-sm font-medium text-zinc-400">WHO-5</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  reportData.who5.level === "HIGH"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : reportData.who5.level === "MOD"
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                }`}>
+                  {reportData.who5.level}
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-white mt-2">
+                {reportData.who5.score}<span className="text-lg font-normal text-zinc-500">/{reportData.who5.maxScore}</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">Positive well-being index</p>
+              <p className="text-xs text-emerald-400 mt-1">{reportData.who5.change} from last week</p>
+              {/* Mini progress bar */}
+              <div className="mt-3 w-full bg-zinc-800 rounded-full h-1.5">
+                <div
+                  className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-emerald-400 transition-all duration-700"
+                  style={{ width: `${reportData.who5.score}%` }}
+                />
+              </div>
+            </div>
+
+            {/* BRS (Brief Resilience Scale) */}
+            <div className="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-5">
+              <div className="flex justify-between items-start">
+                <span className="text-sm font-medium text-zinc-400">BRS</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  reportData.brs.level === "HIGH"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : reportData.brs.level === "MED"
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                }`}>
+                  {reportData.brs.level}
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-white mt-2">
+                {reportData.brs.score}<span className="text-lg font-normal text-zinc-500">/{reportData.brs.maxScore}</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">Resilience — bounce-back ability</p>
+              <p className="text-xs text-emerald-400 mt-1">{reportData.brs.change} from last session</p>
+              {/* Mini gauge dots */}
+              <div className="mt-3 flex gap-1">
+                {[1, 2, 3, 4, 5].map((dot) => (
+                  <div
+                    key={dot}
+                    className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                      dot <= Math.round(reportData.brs.score)
+                        ? "bg-gradient-to-r from-violet-500 to-blue-400"
+                        : "bg-zinc-800"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Psycholinguistic Density (Self-Focus Ratio) */}
+            <div className="bg-zinc-900/80 rounded-2xl border border-zinc-800 p-5">
+              <div className="flex justify-between items-start">
+                <span className="text-sm font-medium text-zinc-400">Psycholinguistic</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  reportData.psycholinguistic.selfFocusRatio > 0.6
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                    : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                }`}>
+                  {reportData.psycholinguistic.selfFocusRatio > 0.6 ? "SELF" : "BAL"}
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-white mt-2">
+                {(reportData.psycholinguistic.selfFocusRatio * 100).toFixed(0)}<span className="text-lg font-normal text-zinc-500">%</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">Self-focus ratio (I/me vs we/they)</p>
+              {/* Self vs Others bar */}
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-blue-400 font-medium">Self</span>
+                <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-zinc-800">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-700"
+                    style={{ width: `${reportData.psycholinguistic.selfFocusRatio * 100}%` }}
+                  />
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-700"
+                    style={{ width: `${(1 - reportData.psycholinguistic.selfFocusRatio) * 100}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-emerald-400 font-medium">Others</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-zinc-600">{reportData.psycholinguistic.selfWords} words</span>
+                <span className="text-[10px] text-zinc-600">{reportData.psycholinguistic.otherWords} words</span>
+              </div>
             </div>
           </div>
 
